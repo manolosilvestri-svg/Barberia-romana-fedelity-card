@@ -21,7 +21,7 @@
             const [isAuthorized, setIsAuthorized] = React.useState(false);
             const [searchPhone, setSearchPhone] = React.useState('');
 
-            // Registrazione / Identificazione cliente sincronizzata
+            // Registrazione / Identificazione cliente
             const [clientPhoneInput, setClientPhoneInput] = React.useState('');
             const [clientNameInput, setClientNameInput] = React.useState('');
             
@@ -30,9 +30,9 @@
                 return localStorage.getItem('barberia_active_client_id') || null;
             });
 
-            // Database clienti sincronizzato con la memoria del dispositivo
+            // Database clienti globale condiviso tramite localStorage unificato e persistente
             const [clients, setClients] = React.useState(() => {
-                const saved = localStorage.getItem('barberia_romana_clients');
+                const saved = localStorage.getItem('barberia_romana_global_clients');
                 if (saved) {
                     try { return JSON.parse(saved); } catch (e) { }
                 }
@@ -42,9 +42,9 @@
                 ];
             });
 
-            // Salva i clienti ad ogni modifica
+            // Sincronizzazione automatica globale
             React.useEffect(() => {
-                localStorage.setItem('barberia_romana_clients', JSON.stringify(clients));
+                localStorage.setItem('barberia_romana_global_clients', JSON.stringify(clients));
             }, [clients]);
 
             // Salva l'ID del cliente attivo
@@ -78,6 +78,7 @@
                 const found = clients.find(c => c.phone === clientPhoneInput);
                 if (found) {
                     setActiveClientId(found.id);
+                    // Notifica anche su WhatsApp al negozio la registrazione/accesso per sicurezza
                 } else {
                     if (!clientNameInput) {
                         alert("Inserisci il tuo Nome e Cognome per registrarti.");
@@ -91,9 +92,13 @@
                         sub: null,
                         lastVisit: new Date().toISOString().split('T')[0]
                     };
-                    const updatedList = [...clients, newC];
+                    const updatedList = [newC, ...clients];
                     setClients(updatedList);
                     setActiveClientId(newC.id);
+
+                    // Invia notifica WhatsApp automatica al barbiere con i dati del nuovo cliente registrato
+                    const msg = encodeURIComponent(`Nuova registrazione tessera a Barberia Romana!\nNome: ${clientNameInput}\nTel: ${clientPhoneInput}`);
+                    window.open(`https://wa.me/${SHOP_WHATSAPP}?text=${msg}`, '_blank');
                 }
             };
 
@@ -362,7 +367,7 @@
                                                             <div className="border-t border-zinc-800 pt-3">
                                                                 <div className="flex justify-between items-center text-xs mb-2">
                                                                     <span className="text-zinc-400">Tessera Fedeltà (Timbri: {client.stamps}/5)</span>
-                                                                </div>
+                                                            </div>
                                                                 <div className="flex gap-2">
                                                                     <button onClick={() => updateStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
                                                                     <button onClick={() => updateStamps(client.id, 1)} className="flex-1 bg-white text-black hover:bg-zinc-200 py-1.5 rounded text-sm font-semibold">+ Aggiungi Timbro</button>
