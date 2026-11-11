@@ -21,6 +21,11 @@
             const [isAuthorized, setIsAuthorized] = React.useState(false);
             const [searchPhone, setSearchPhone] = React.useState('');
 
+            // Registrazione / Identificazione cliente
+            const [clientPhoneInput, setClientPhoneInput] = React.useState('');
+            const [clientNameInput, setClientNameInput] = React.useState('');
+            const [activeClient, setActiveClient] = React.useState(null);
+
             // Database simulato clienti
             const [clients, setClients] = React.useState([
                 { id: 1, name: "Marco Rossi", phone: "3331234567", stamps: 3, sub: null, lastVisit: "2026-11-01" },
@@ -41,11 +46,38 @@
                 }
             };
 
+            const handleClientLogin = (e) => {
+                e.preventDefault();
+                if (!clientPhoneInput) return;
+                const found = clients.find(c => c.phone === clientPhoneInput);
+                if (found) {
+                    setActiveClient(found);
+                } else {
+                    // Crea nuovo cliente se non esiste
+                    if (!clientNameInput) {
+                        alert("Inserisci il tuo Nome e Cognome per registrarti.");
+                        return;
+                    }
+                    const newC = {
+                        id: Date.now(),
+                        name: clientNameInput,
+                        phone: clientPhoneInput,
+                        stamps: 0,
+                        sub: null,
+                        lastVisit: new Date().toISOString().split('T')[0]
+                    };
+                    setClients([...clients, newC]);
+                    setActiveClient(newC);
+                }
+            };
+
             const updateStamps = (clientId, delta) => {
                 setClients(clients.map(c => {
                     if (c.id === clientId) {
                         let newStamps = Math.max(0, Math.min(5, c.stamps + delta));
-                        return { ...c, stamps: newStamps, lastVisit: new Date().toISOString().split('T')[0] };
+                        const updated = { ...c, stamps: newStamps, lastVisit: new Date().toISOString().split('T')[0] };
+                        if (activeClient && activeClient.id === clientId) setActiveClient(updated);
+                        return updated;
                     }
                     return c;
                 }));
@@ -56,7 +88,9 @@
                     if (c.id === clientId && c.sub) {
                         let maxServices = c.sub.type === 'Bronze' ? 2 : c.sub.type === 'Silver' ? 4 : 10;
                         let newUsed = Math.max(0, Math.min(maxServices, c.sub.used + delta));
-                        return { ...c, sub: { ...c.sub, used: newUsed }, lastVisit: new Date().toISOString().split('T')[0] };
+                        const updated = { ...c, sub: { ...c.sub, used: newUsed }, lastVisit: new Date().toISOString().split('T')[0] };
+                        if (activeClient && activeClient.id === clientId) setActiveClient(updated);
+                        return updated;
                     }
                     return c;
                 }));
@@ -65,7 +99,9 @@
             const assignSub = (clientId, type, serviceName) => {
                 setClients(clients.map(c => {
                     if (c.id === clientId) {
-                        return { ...c, sub: { type, serviceName, used: 0, startDate: new Date().toISOString().split('T')[0] }, lastVisit: new Date().toISOString().split('T')[0] };
+                        const updated = { ...c, sub: { type, serviceName, used: 0, startDate: new Date().toISOString().split('T')[0] }, lastVisit: new Date().toISOString().split('T')[0] };
+                        if (activeClient && activeClient.id === clientId) setActiveClient(updated);
+                        return updated;
                     }
                     return c;
                 }));
@@ -74,7 +110,9 @@
             const removeSub = (clientId) => {
                 setClients(clients.map(c => {
                     if (c.id === clientId) {
-                        return { ...c, sub: null };
+                        const updated = { ...c, sub: null };
+                        if (activeClient && activeClient.id === clientId) setActiveClient(updated);
+                        return updated;
                     }
                     return c;
                 }));
@@ -89,7 +127,7 @@
             };
 
             const sendWhatsAppReminder = (clientName, phone, subType) => {
-                const message = encodeURIComponent(`Ciao ${clientName}, ti ricordiamo che il tuo abbonamento ${subType} per Barberia Romana è in scadenza o richiede la tua visita. Ti aspettiamo in negozio!`);
+                const message = encodeURIComponent(`Ciao ${clientName}, ti ricordiamo che il tuo abbonamento ${subType} per Barberia Romana richiede la tua visita. Ti aspettiamo in negozio!`);
                 window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
             };
 
@@ -120,44 +158,95 @@
                     {/* VISTA CLIENTE */}
                     {view === 'client' && (
                         <div className="space-y-6">
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 text-center">
-                                <h2 className="text-lg font-semibold mb-2">La tua Tessera Fedeltà</h2>
-                                <p className="text-xs text-zinc-400 mb-4">Colleziona 5 timbri: il 5° è al 50% di sconto!</p>
-                                <div className="flex justify-center gap-2 my-4">
-                                    {[1, 2, 3, 4, 5].map((stamp) => (
-                                        <div key={stamp} className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-sm ${stamp <= 3 ? 'border-amber-500 bg-amber-500/10 text-amber-500' : 'border-zinc-700 text-zinc-600'}`}>
-                                            {stamp <= 3 ? '✓' : stamp}
-                                        </div>
-                                    ))}
+                            {!activeClient ? (
+                                <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
+                                    <h2 className="text-lg font-semibold text-center">Accedi alla tua Tessera</h2>
+                                    <p className="text-xs text-zinc-400 text-center">Inserisci il tuo numero di telefono per visualizzare timbri e abbonamenti attivi.</p>
+                                    <form onSubmit={handleClientLogin} className="space-y-3">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Il tuo Nome e Cognome" 
+                                            value={clientNameInput}
+                                            onChange={(e) => setClientNameInput(e.target.value)}
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-white"
+                                        />
+                                        <input 
+                                            type="tel" 
+                                            placeholder="Numero di Telefono" 
+                                            value={clientPhoneInput}
+                                            onChange={(e) => setClientPhoneInput(e.target.value)}
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-white"
+                                        />
+                                        <button type="submit" className="w-full bg-white text-black font-semibold py-3 rounded-lg hover:bg-zinc-200 transition">
+                                            Entra / Registrati
+                                        </button>
+                                    </form>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                                        <div>
+                                            <h2 className="font-bold text-sm">Benvenuto, {activeClient.name}</h2>
+                                            <p className="text-xs text-zinc-400">Tel: {activeClient.phone}</p>
+                                        </div>
+                                        <button onClick={() => setActiveClient(null)} className="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded transition">
+                                            Cambia utente
+                                        </button>
+                                    </div>
+
+                                    {/* Tessera Fedeltà */}
+                                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 text-center">
+                                        <h3 className="text-lg font-semibold mb-2">La tua Tessera Fedeltà</h3>
+                                        <p className="text-xs text-zinc-400 mb-4">Colleziona 5 timbri: il 5° è al 50% di sconto!</p>
+                                        <div className="flex justify-center gap-2 my-4">
+                                            {[1, 2, 3, 4, 5].map((stamp) => (
+                                                <div key={stamp} className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-sm ${stamp <= activeClient.stamps ? 'border-amber-500 bg-amber-500/10 text-amber-500' : 'border-zinc-700 text-zinc-600'}`}>
+                                                    {stamp <= activeClient.stamps ? '✓' : stamp}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-zinc-400 mt-2">Timbri accumulati: <b>{activeClient.stamps} / 5</b></p>
+                                    </div>
+
+                                    {/* Stato Abbonamento Cliente */}
+                                    {activeClient.sub && (
+                                        <div className="bg-zinc-900 border border-amber-500/30 p-4 rounded-xl space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-bold text-amber-500">Abbonamento {activeClient.sub.type}</span>
+                                                <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">Servizio: {activeClient.sub.serviceName}</span>
+                                            </div>
+                                            <p className="text-xs text-zinc-400">Servizi utilizzati: {activeClient.sub.used} / {activeClient.sub.type === 'Bronze' ? 2 : activeClient.sub.type === 'Silver' ? 4 : 10}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Info Abbonamenti Disponibili */}
-                            <div className="space-y-3">
+                            <div className="space-y-3 pt-2">
                                 <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">I Nostri Abbonamenti</h3>
                                 
                                 <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="font-bold text-amber-600">Bronze Card</span>
-                                        <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">-15% / 15 Giorni</span>
+                                        <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">2 Servizi</span>
                                     </div>
-                                    <p className="text-xs text-zinc-400">2 Servizi inclusi con scelta dedicata.</p>
+                                    <p className="text-xs text-zinc-400">Ideale per cicli quindicinali.</p>
                                 </div>
 
                                 <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="font-bold text-slate-300">Silver Card</span>
-                                        <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">-20% / Settimanale</span>
+                                        <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">4 Servizi</span>
                                     </div>
-                                    <p className="text-xs text-zinc-400">4 Servizi inclusi con scelta dedicata.</p>
+                                    <p className="text-xs text-zinc-400">Ideale per cadenza settimanale.</p>
                                 </div>
 
                                 <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="font-bold text-yellow-400">Gold Card</span>
-                                        <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">-25% / No Scadenza</span>
+                                        <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">10 Servizi</span>
                                     </div>
-                                    <p className="text-xs text-zinc-400">10 Servizi inclusi con massima flessibilità.</p>
+                                    <p className="text-xs text-zinc-400">Massima flessibilità senza scadenza.</p>
                                 </div>
                             </div>
 
@@ -182,7 +271,7 @@
                                     <form onSubmit={handleLogin} className="space-y-4">
                                         <input 
                                             type="password" 
-                                            placeholder="Inserisci PIN (1893)" 
+                                            placeholder="Inserisci PIN (••••)" 
                                             value={pinInput}
                                             onChange={(e) => setPinInput(e.target.value)}
                                             className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-center text-lg tracking-widest text-white focus:outline-none focus:border-white"
