@@ -8,6 +8,15 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @keyframes glow {
+            0%, 100% { text-shadow: 0 0 15px rgba(245, 158, 11, 0.3), 0 0 30px rgba(245, 158, 11, 0.1); }
+            50% { text-shadow: 0 0 25px rgba(245, 158, 11, 0.6), 0 0 50px rgba(245, 158, 11, 0.3); }
+        }
+        .neon-title {
+            animation: glow 3s ease-in-out infinite;
+        }
+    </style>
 </head>
 <body class="bg-black text-white min-h-screen font-sans flex flex-col justify-between">
     <div id="root" class="w-full"></div>
@@ -20,7 +29,6 @@
                 const cardData = params.get('card');
                 if (cardData) {
                     try {
-                        // Decodifica i dati dal link
                         const decoded = decodeURIComponent(escape(atob(cardData)));
                         return JSON.parse(decoded);
                     } catch (e) {
@@ -30,7 +38,6 @@
                 return null;
             });
 
-            const [showStaffLogin, setShowStaffLogin] = React.useState(false);
             const [pinInput, setPinInput] = React.useState('');
             const [isAuthorized, setIsAuthorized] = React.useState(false);
             const [searchQuery, setSearchQuery] = React.useState('');
@@ -134,6 +141,37 @@
                 }
             };
 
+            // Funzioni di Backup e Ripristino Dati
+            const exportBackup = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clients, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `barberia_romana_backup_${new Date().toISOString().split('T')[0]}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            };
+
+            const importBackup = (e) => {
+                const fileReader = new FileReader();
+                if (e.target.files[0]) {
+                    fileReader.readAsText(e.target.files[0], "UTF-8");
+                    fileReader.onload = (event) => {
+                        try {
+                            const importedClients = JSON.parse(event.target.result);
+                            if (Array.isArray(importedClients)) {
+                                setClients(importedClients);
+                                alert("Backup ripristinato con successo!");
+                            } else {
+                                alert("Il file non è valido.");
+                            }
+                        } catch (error) {
+                            alert("Errore durante la lettura del file di backup.");
+                        }
+                    };
+                }
+            };
+
             // Genera il link univoco con i dati del cliente e apre WhatsApp
             const sendClientCardWhatsApp = (client) => {
                 const payload = {
@@ -148,7 +186,6 @@
                     d: new Date().toLocaleDateString('it-IT')
                 };
 
-                // Codifica i dati in una stringa sicura per l'URL
                 const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
                 const baseUrl = window.location.origin + window.location.pathname;
                 const personalLink = `${baseUrl}?card=${encodedData}`;
@@ -160,7 +197,6 @@
                     `Visualizza la tua tessera grafica qui:\n${personalLink}`
                 );
 
-                // Formatta il numero per WhatsApp (aggiunge +39 se manca)
                 let waPhone = client.phone.replace(/[^0-9]/g, '');
                 if (waPhone.length === 10 && waPhone.startsWith('3')) {
                     waPhone = '39' + waPhone;
@@ -177,13 +213,11 @@
                     <div className="max-w-md mx-auto p-4 pb-8 flex flex-col min-h-screen justify-between">
                         <div>
                             <header className="text-center py-6 border-b border-zinc-800 mb-6">
-                                <h1 className="text-2xl font-bold tracking-widest uppercase">Barberia Romana</h1>
+                                <h1 className="text-2xl font-bold tracking-widest uppercase text-amber-500 neon-title">Barberia Romana</h1>
                                 <p className="text-xs text-zinc-400 mt-1">Tessera Digitale Ufficiale</p>
                             </header>
 
-                            {/* Card Grafica Autentica */}
                             <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-amber-500/40 rounded-2xl p-6 shadow-2xl space-y-6 relative overflow-hidden">
-                                {/* Intestazione Card */}
                                 <div className="flex justify-between items-start border-b border-zinc-800 pb-4">
                                     <div>
                                         <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold block mb-1">Titolare Tessera</span>
@@ -195,7 +229,6 @@
                                     </div>
                                 </div>
 
-                                {/* Sezione Timbri Visivi */}
                                 <div className="text-center py-2">
                                     <p className="text-xs text-zinc-400 mb-4">Colleziona 5 timbri: il 5° servizio è al <strong className="text-white">50% di sconto</strong></p>
                                     
@@ -231,7 +264,6 @@
                                     </div>
                                 </div>
 
-                                {/* Sezione Abbonamento (Visibile solo se il cliente ne ha uno attivo) */}
                                 {sharedCard.sub && (
                                     <div className="border-t border-zinc-800 pt-5 space-y-3">
                                         <div className="flex justify-between items-center">
@@ -241,7 +273,6 @@
                                             </span>
                                         </div>
                                         
-                                        {/* Barra di avanzamento abbonamento */}
                                         <div className="w-full bg-zinc-800 h-2.5 rounded-full overflow-hidden">
                                             <div 
                                                 className="bg-amber-500 h-full rounded-full" 
@@ -256,14 +287,12 @@
                                     </div>
                                 )}
 
-                                {/* Data di emissione / validità */}
                                 <div className="border-t border-zinc-800/80 pt-3 flex justify-between items-center text-[10px] text-zinc-500">
                                     <span>Aggiornato il: {sharedCard.d}</span>
                                     <span>Barberia Romana Official</span>
                                 </div>
                             </div>
 
-                            {/* Tasto Prenota su WhatsApp per il cliente */}
                             <div className="mt-6">
                                 <a 
                                     href={`https://wa.me/${SHOP_WHATSAPP}?text=Ciao%20Barberia%20Romana,%20vorrei%20prenotare%20il%20mio%20prossimo%20appuntamento!`} 
@@ -284,115 +313,92 @@
             }
 
             // =====================================================================
-            // VISTA 2: VETRINA PUBBLICA & AREA RISERVATA STAFF (SUL TUO TELEFONO)
+            // VISTA 2: HOME STAFF SPETTACOLARE & GESTIONALE
             // =====================================================================
             return (
                 <div className="max-w-md mx-auto p-4 pb-8 flex flex-col min-h-screen justify-between">
-                    <div>
-                        <header className="text-center py-6 border-b border-zinc-800 mb-6">
-                            <h1 className="text-2xl font-bold tracking-widest uppercase">Barberia Romana</h1>
-                            <p className="text-xs text-zinc-400 mt-1">Digital Card & Subscriptions</p>
+                    <div className="flex-1 flex flex-col">
+                        <header className="text-center py-8 border-b border-zinc-800/80 mb-6 bg-gradient-to-b from-zinc-950 to-black rounded-2xl shadow-inner">
+                            <h1 className="text-3xl font-extrabold tracking-widest uppercase text-amber-500 neon-title">Barberia Romana</h1>
+                            <p className="text-xs text-zinc-400 tracking-widest mt-2 uppercase">Official Staff Management</p>
                         </header>
 
                         {!isAuthorized ? (
-                            <div className="space-y-6">
-                                {/* Se hai cliccato su "Area Riservata" in basso, mostra il tastierino PIN */}
-                                {showStaffLogin ? (
-                                    <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl text-center space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <h2 className="text-lg font-semibold">Area Riservata Staff</h2>
-                                            <button onClick={() => setShowStaffLogin(false)} className="text-xs text-zinc-400 hover:text-white underline">
-                                                Chiudi
-                                            </button>
+                            <div className="my-auto py-8">
+                                <div className="bg-zinc-900/90 border border-amber-500/30 p-8 rounded-3xl text-center space-y-6 shadow-2xl backdrop-blur-sm">
+                                    <div className="space-y-1">
+                                        <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-2xl mx-auto flex items-center justify-center text-amber-500 text-xl font-bold mb-3 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                                            🔒
                                         </div>
-                                        <form onSubmit={handleLogin} className="space-y-4">
-                                            <input 
-                                                type="password" 
-                                                inputMode="numeric"
-                                                placeholder="Inserisci PIN (••••)" 
-                                                value={pinInput}
-                                                onChange={(e) => setPinInput(e.target.value)}
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-center text-lg tracking-widest text-white focus:outline-none focus:border-white"
-                                                maxLength="4"
-                                            />
-                                            <button type="submit" className="w-full bg-white text-black font-semibold py-3 rounded-lg hover:bg-zinc-200 transition">
-                                                Accedi
-                                            </button>
-                                        </form>
+                                        <h2 className="text-lg font-bold tracking-wide uppercase text-white">Area Riservata</h2>
+                                        <p className="text-xs text-zinc-400">Inserisci il PIN di sicurezza per sbloccare il sistema</p>
                                     </div>
-                                ) : (
-                                    /* Vetrina Pubblica per chi visita il link principale */
-                                    <div className="space-y-4">
-                                        <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl text-center space-y-2">
-                                            <h2 className="text-base font-bold text-white">Programma Fedeltà</h2>
-                                            <p className="text-xs text-zinc-400">Richiedi la tua tessera digitale in salone: ogni 5 servizi, il 5° è scontato del 50%.</p>
-                                        </div>
-
-                                        <div className="space-y-3 pt-2">
-                                            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">I Nostri Abbonamenti</h3>
-                                            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                                                <div>
-                                                    <span className="font-bold text-amber-600 block">Bronze Card</span>
-                                                    <span className="text-xs text-zinc-400">Ideale per cicli quindicinali</span>
-                                                </div>
-                                                <span className="text-xs bg-zinc-800 px-2.5 py-1 rounded text-zinc-300 font-medium">2 Servizi</span>
-                                            </div>
-                                            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                                                <div>
-                                                    <span className="font-bold text-slate-300 block">Silver Card</span>
-                                                    <span className="text-xs text-zinc-400">Ideale per cadenza settimanale</span>
-                                                </div>
-                                                <span className="text-xs bg-zinc-800 px-2.5 py-1 rounded text-zinc-300 font-medium">4 Servizi</span>
-                                            </div>
-                                            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                                                <div>
-                                                    <span className="font-bold text-yellow-400 block">Gold Card</span>
-                                                    <span className="text-xs text-zinc-400">Massima flessibilità senza scadenza</span>
-                                                </div>
-                                                <span className="text-xs bg-zinc-800 px-2.5 py-1 rounded text-zinc-300 font-medium">10 Servizi</span>
-                                            </div>
-                                        </div>
-
-                                        <a 
-                                            href={`https://wa.me/${SHOP_WHATSAPP}?text=Salve,%20vorrei%20prenotare%20un%20appuntamento%20presso%20Barberia%20Romana.`} 
-                                            target="_blank" 
-                                            rel="noreferrer"
-                                            className="block w-full text-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3.5 rounded-xl transition mt-4"
-                                        >
-                                            Prenota su WhatsApp
-                                        </a>
-                                    </div>
-                                )}
+                                    <form onSubmit={handleLogin} className="space-y-4">
+                                        <input 
+                                            type="password" 
+                                            inputMode="numeric"
+                                            placeholder="••••" 
+                                            value={pinInput}
+                                            onChange={(e) => setPinInput(e.target.value)}
+                                            className="w-full bg-black border border-zinc-700 rounded-xl p-4 text-center text-3xl tracking-[0.6em] text-amber-400 focus:outline-none focus:border-amber-500 transition shadow-inner"
+                                            maxLength="4"
+                                            autoFocus
+                                        />
+                                        <button type="submit" className="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-bold py-3.5 rounded-xl transition tracking-wide shadow-lg">
+                                            Sblocca Pannello
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         ) : (
-                            /* PANNELLO DI GESTIONE STAFF (AUTORIZZATO) */
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800">
-                                    <span className="text-sm font-medium text-emerald-400">● Staff Autorizzato</span>
-                                    <button onClick={() => { setIsAuthorized(false); setShowStaffLogin(false); }} className="text-xs text-zinc-400 hover:text-white underline">
-                                        Esci
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span className="text-sm font-semibold text-emerald-400">Staff Connesso</span>
+                                    </div>
+                                    <button onClick={() => setIsAuthorized(false)} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition font-medium">
+                                        Blocca
                                     </button>
                                 </div>
 
+                                {/* Barra Backup & Ripristino Dati */}
+                                <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between gap-2">
+                                    <span className="text-xs text-zinc-400 font-medium pl-1">Salvataggio Dati:</span>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={exportBackup} 
+                                            className="text-xs bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-lg transition font-semibold"
+                                            title="Scarica un file di backup con tutti i clienti"
+                                        >
+                                            💾 Esporta Backup
+                                        </button>
+                                        <label className="text-xs bg-zinc-800 hover:bg-zinc-700 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg transition font-semibold cursor-pointer">
+                                            📂 Importa
+                                            <input type="file" accept=".json" onChange={importBackup} className="hidden" />
+                                        </label>
+                                    </div>
+                                </div>
+
                                 {/* Form Aggiungi Nuovo Cliente */}
-                                <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3">
-                                    <h3 className="font-semibold text-sm">Registra Nuovo Cliente</h3>
+                                <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3 shadow-lg">
+                                    <h3 className="font-semibold text-sm text-amber-500">Registra Nuovo Cliente</h3>
                                     <form onSubmit={handleAddClient} className="space-y-2">
                                         <input 
                                             type="text" 
                                             placeholder="Nome e Cognome" 
                                             value={newClientName}
                                             onChange={(e) => setNewClientName(e.target.value)}
-                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-white"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
                                         />
                                         <input 
                                             type="tel" 
                                             placeholder="Numero di Telefono (es. 3331234567)" 
                                             value={newClientPhone}
                                             onChange={(e) => setNewClientPhone(e.target.value)}
-                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-white"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
                                         />
-                                        <button type="submit" className="w-full bg-white text-black font-semibold py-2.5 rounded-lg hover:bg-zinc-200 text-sm transition">
+                                        <button type="submit" className="w-full bg-white text-black font-semibold py-2.5 rounded-lg hover:bg-zinc-200 text-sm transition shadow">
                                             + Aggiungi Cliente
                                         </button>
                                     </form>
@@ -405,7 +411,7 @@
                                         placeholder="Cerca cliente per nome o telefono..." 
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-white"
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-amber-500"
                                     />
                                 </div>
 
@@ -414,10 +420,10 @@
                                     {clients
                                         .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery))
                                         .map(client => (
-                                            <div key={client.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-4">
+                                            <div key={client.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-4 shadow">
                                                 <div className="flex justify-between items-start gap-2">
                                                     <div>
-                                                        <h3 className="font-bold text-base">{client.name}</h3>
+                                                        <h3 className="font-bold text-base text-white">{client.name}</h3>
                                                         <p className="text-xs text-zinc-400">Tel: {client.phone}</p>
                                                     </div>
                                                     <div className="flex gap-1.5">
@@ -439,7 +445,7 @@
                                                 {/* Gestione Timbri */}
                                                 <div className="border-t border-zinc-800 pt-3">
                                                     <div className="flex justify-between items-center text-xs mb-2">
-                                                        <span className="text-zinc-400">Tessera Fedeltà (Timbri: <strong className="text-white">{client.stamps}/5</strong>)</span>
+                                                        <span className="text-zinc-400">Tessera Fedeltà (Timbri: <strong className="text-amber-500">{client.stamps}/5</strong>)</span>
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <button onClick={() => updateStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
@@ -482,16 +488,8 @@
                         )}
                     </div>
 
-                    {/* Footer con accesso Staff discreto in basso */}
-                    <footer className="text-center pt-8 pb-4 border-t border-zinc-900 mt-8">
-                        {!isAuthorized && !showStaffLogin && (
-                            <button 
-                                onClick={() => setShowStaffLogin(true)} 
-                                className="text-[11px] text-zinc-600 hover:text-zinc-400 tracking-wider uppercase transition"
-                            >
-                                Area Riservata (Staff)
-                            </button>
-                        )}
+                    <footer className="text-center pt-8 pb-4 text-[11px] text-zinc-600">
+                        Barberia Romana • Uso Riservato
                     </footer>
                 </div>
             );
