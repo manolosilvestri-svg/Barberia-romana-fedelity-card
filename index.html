@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barberia Romana - Fedeltà & Abbonamenti</title>
+    <title>Barberia Romana - Gestione Fedeltà</title>
     <!-- Tailwind CSS per un design minimale e ad alto contrasto -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React e Babel per gestire l'interattività dello smartphone -->
@@ -16,23 +16,17 @@
 
     <script type="text/babel">
         function App() {
-            const [view, setView] = React.useState('client'); // 'client' o 'staff'
             const [pinInput, setPinInput] = React.useState('');
             const [isAuthorized, setIsAuthorized] = React.useState(false);
-            const [searchPhone, setSearchPhone] = React.useState('');
+            const [searchQuery, setSearchQuery] = React.useState('');
 
-            // Registrazione / Identificazione cliente
-            const [clientPhoneInput, setClientPhoneInput] = React.useState('');
-            const [clientNameInput, setClientNameInput] = React.useState('');
-            
-            // Gestione cliente attivo persistente
-            const [activeClientId, setActiveClientId] = React.useState(() => {
-                return localStorage.getItem('barberia_active_client_id') || null;
-            });
+            // Campi per aggiungere un nuovo cliente da parte dello staff
+            const [newClientName, setNewClientName] = React.useState('');
+            const [newClientPhone, setNewClientPhone] = React.useState('');
 
-            // Database clienti globale condiviso tramite localStorage unificato e persistente
+            // Database locale persistente dei clienti gestito dallo staff
             const [clients, setClients] = React.useState(() => {
-                const saved = localStorage.getItem('barberia_romana_global_clients');
+                const saved = localStorage.getItem('barberia_romana_staff_clients');
                 if (saved) {
                     try { return JSON.parse(saved); } catch (e) { }
                 }
@@ -42,21 +36,10 @@
                 ];
             });
 
-            // Sincronizzazione automatica globale
+            // Salva i dati in automatico sul telefono
             React.useEffect(() => {
-                localStorage.setItem('barberia_romana_global_clients', JSON.stringify(clients));
+                localStorage.setItem('barberia_romana_staff_clients', JSON.stringify(clients));
             }, [clients]);
-
-            // Salva l'ID del cliente attivo
-            React.useEffect(() => {
-                if (activeClientId) {
-                    localStorage.setItem('barberia_active_client_id', activeClientId);
-                } else {
-                    localStorage.removeItem('barberia_active_client_id');
-                }
-            }, [activeClientId]);
-
-            const activeClient = clients.find(c => c.id == activeClientId) || null;
 
             const STAFF_PIN = "1893";
             const SHOP_WHATSAPP = "3318610302";
@@ -72,99 +55,75 @@
                 }
             };
 
-            const handleClientLogin = (e) => {
+            const handleAddClient = (e) => {
                 e.preventDefault();
-                if (!clientPhoneInput) return;
-                const found = clients.find(c => c.phone === clientPhoneInput);
-                if (found) {
-                    setActiveClientId(found.id);
-                    // Notifica anche su WhatsApp al negozio la registrazione/accesso per sicurezza
-                } else {
-                    if (!clientNameInput) {
-                        alert("Inserisci il tuo Nome e Cognome per registrarti.");
-                        return;
-                    }
-                    const newC = {
-                        id: Date.now(),
-                        name: clientNameInput,
-                        phone: clientPhoneInput,
-                        stamps: 0,
-                        sub: null,
-                        lastVisit: new Date().toISOString().split('T')[0]
-                    };
-                    const updatedList = [newC, ...clients];
-                    setClients(updatedList);
-                    setActiveClientId(newC.id);
-
-                    // Invia notifica WhatsApp automatica al barbiere con i dati del nuovo cliente registrato
-                    const msg = encodeURIComponent(`Nuova registrazione tessera a Barberia Romana!\nNome: ${clientNameInput}\nTel: ${clientPhoneInput}`);
-                    window.open(`https://wa.me/${SHOP_WHATSAPP}?text=${msg}`, '_blank');
+                if (!newClientName || !newClientPhone) {
+                    alert("Inserisci Nome e Numero di Telefono del cliente.");
+                    return;
                 }
+                const newC = {
+                    id: Date.now(),
+                    name: newClientName,
+                    phone: newClientPhone,
+                    stamps: 0,
+                    sub: null,
+                    lastVisit: new Date().toISOString().split('T')[0]
+                };
+                setClients([newC, ...clients]);
+                setNewClientName('');
+                setNewClientPhone('');
             };
 
             const updateStamps = (clientId, delta) => {
-                const updatedClients = clients.map(c => {
+                setClients(clients.map(c => {
                     if (c.id === clientId) {
                         let newStamps = Math.max(0, Math.min(5, c.stamps + delta));
                         return { ...c, stamps: newStamps, lastVisit: new Date().toISOString().split('T')[0] };
                     }
                     return c;
-                });
-                setClients(updatedClients);
+                }));
             };
 
             const updateSubStamps = (clientId, delta) => {
-                const updatedClients = clients.map(c => {
+                setClients(clients.map(c => {
                     if (c.id === clientId && c.sub) {
                         let maxServices = c.sub.type === 'Bronze' ? 2 : c.sub.type === 'Silver' ? 4 : 10;
                         let newUsed = Math.max(0, Math.min(maxServices, c.sub.used + delta));
                         return { ...c, sub: { ...c.sub, used: newUsed }, lastVisit: new Date().toISOString().split('T')[0] };
                     }
                     return c;
-                });
-                setClients(updatedClients);
+                }));
             };
 
             const assignSub = (clientId, type, serviceName) => {
-                const updatedClients = clients.map(c => {
+                setClients(clients.map(c => {
                     if (c.id === clientId) {
                         return { ...c, sub: { type, serviceName, used: 0, startDate: new Date().toISOString().split('T')[0] }, lastVisit: new Date().toISOString().split('T')[0] };
                     }
                     return c;
-                });
-                setClients(updatedClients);
+                }));
             };
 
             const removeSub = (clientId) => {
-                const updatedClients = clients.map(c => {
+                setClients(clients.map(c => {
                     if (c.id === clientId) {
                         return { ...c, sub: null };
                     }
                     return c;
-                });
-                setClients(updatedClients);
+                }));
             };
 
             const deleteClient = (clientId) => {
                 if (confirm("Sei sicuro di voler eliminare questo cliente?")) {
                     setClients(clients.filter(c => c.id !== clientId));
-                    if (activeClientId == clientId) {
-                        setActiveClientId(null);
-                    }
                 }
             };
 
-            const checkIfInactive = (lastVisit) => {
-                if (!lastVisit) return false;
-                const last = new Date(lastVisit);
-                const now = new Date();
-                const diffDays = Math.floor((now - last) / (1000 * 60 * 60 * 24));
-                return diffDays >= 10;
-            };
-
-            const sendWhatsAppReminder = (clientName, phone, subType) => {
-                const message = encodeURIComponent(`Ciao ${clientName}, ti ricordiamo che il tuo abbonamento ${subType} per Barberia Romana richiede la tua visita. Ti aspettiamo in negozio!`);
-                window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+            // Invia la tessera aggiornata via WhatsApp al cliente
+            const sendClientCardWhatsApp = (client) => {
+                const subText = client.sub ? `\nAbbonamento attivo: ${client.sub.type} (${client.sub.serviceName}) - Usati: ${client.sub.used}` : '';
+                const message = encodeURIComponent(`Ciao ${client.name}! Ecco la tua situazione aggiornata presso Barberia Romana 💈\nTimbri Tessera Fedeltà: ${client.stamps} / 5 (Il 5° è al 50% di sconto!)${subText}\n\nTi aspettiamo in negozio!`);
+                window.open(`https://wa.me/${client.phone}?text=${message}`, '_blank');
             };
 
             return (
@@ -173,250 +132,173 @@
                         {/* Header */}
                         <header className="text-center py-6 border-b border-zinc-800 mb-6">
                             <h1 className="text-2xl font-bold tracking-widest uppercase">Barberia Romana</h1>
-                            <p className="text-xs text-zinc-400 mt-1">Digital Card & Subscriptions</p>
+                            <p className="text-xs text-zinc-400 mt-1">Gestione Fedeltà & Abbonamenti</p>
                         </header>
 
-                        {/* VISTA CLIENTE */}
-                        {view === 'client' && (
+                        {!isAuthorized ? (
+                            /* SCHERMATA LOGIN PIN STAFF */
                             <div className="space-y-6">
-                                {!activeClient ? (
-                                    <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl space-y-4">
-                                        <h2 className="text-lg font-semibold text-center">Accedi alla tua Tessera</h2>
-                                        <p className="text-xs text-zinc-400 text-center">Inserisci il tuo numero di telefono per visualizzare timbri e abbonamenti attivi.</p>
-                                        <form onSubmit={handleClientLogin} className="space-y-3">
-                                            <input 
-                                                type="text" 
-                                                placeholder="Il tuo Nome e Cognome" 
-                                                value={clientNameInput}
-                                                onChange={(e) => setClientNameInput(e.target.value)}
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-white"
-                                            />
-                                            <input 
-                                                type="tel" 
-                                                placeholder="Numero di Telefono" 
-                                                value={clientPhoneInput}
-                                                onChange={(e) => setClientPhoneInput(e.target.value)}
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-white"
-                                            />
-                                            <button type="submit" className="w-full bg-white text-black font-semibold py-3 rounded-lg hover:bg-zinc-200 transition">
-                                                Entra / Registrati
-                                            </button>
-                                        </form>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800">
-                                            <div>
-                                                <h2 className="font-bold text-sm">Benvenuto, {activeClient.name}</h2>
-                                                <p className="text-xs text-zinc-400">Tel: {activeClient.phone}</p>
-                                            </div>
-                                            <button onClick={() => setActiveClientId(null)} className="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded transition">
-                                                Cambia utente
-                                            </button>
-                                        </div>
-
-                                        {/* Tessera Fedeltà */}
-                                        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 text-center">
-                                            <h3 className="text-lg font-semibold mb-2">La tua Tessera Fedeltà</h3>
-                                            <p className="text-xs text-zinc-400 mb-4">Colleziona 5 timbri: il 5° è al 50% di sconto!</p>
-                                            <div className="flex justify-center gap-2 my-4">
-                                                {[1, 2, 3, 4, 5].map((stamp) => (
-                                                    <div key={stamp} className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-sm ${stamp <= activeClient.stamps ? 'border-amber-500 bg-amber-500/10 text-amber-500' : 'border-zinc-700 text-zinc-600'}`}>
-                                                        {stamp <= activeClient.stamps ? '✓' : stamp}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <p className="text-xs text-zinc-400 mt-2">Timbri accumulati: <b>{activeClient.stamps} / 5</b></p>
-                                        </div>
-
-                                        {/* Stato Abbonamento Cliente */}
-                                        {activeClient.sub && (
-                                            <div className="bg-zinc-900 border border-amber-500/30 p-4 rounded-xl space-y-2">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="font-bold text-amber-500">Abbonamento {activeClient.sub.type}</span>
-                                                    <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">Servizio: {activeClient.sub.serviceName}</span>
-                                                </div>
-                                                <p className="text-xs text-zinc-400">Servizi utilizzati: {activeClient.sub.used} / {activeClient.sub.type === 'Bronze' ? 2 : activeClient.sub.type === 'Silver' ? 4 : 10}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Info Abbonamenti Disponibili */}
-                                <div className="space-y-3 pt-2">
-                                    <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">I Nostri Abbonamenti</h3>
-                                    
-                                    <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="font-bold text-amber-600">Bronze Card</span>
-                                            <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">2 Servizi</span>
-                                        </div>
-                                        <p className="text-xs text-zinc-400">Ideale per cicli quindicinali.</p>
-                                    </div>
-
-                                    <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="font-bold text-slate-300">Silver Card</span>
-                                            <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">4 Servizi</span>
-                                        </div>
-                                        <p className="text-xs text-zinc-400">Ideale per cadenza settimanale.</p>
-                                    </div>
-
-                                    <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="font-bold text-yellow-400">Gold Card</span>
-                                            <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">10 Servizi</span>
-                                        </div>
-                                        <p className="text-xs text-zinc-400">Massima flessibilità senza scadenza.</p>
-                                    </div>
+                                <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl text-center space-y-4">
+                                    <h2 className="text-lg font-semibold">Area Riservata Staff</h2>
+                                    <p className="text-xs text-zinc-400">Inserisci il PIN per accedere al pannello di gestione clienti e tessere.</p>
+                                    <form onSubmit={handleLogin} className="space-y-4">
+                                        <input 
+                                            type="password" 
+                                            placeholder="Inserisci PIN (••••)" 
+                                            value={pinInput}
+                                            onChange={(e) => setPinInput(e.target.value)}
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-center text-lg tracking-widest text-white focus:outline-none focus:border-white"
+                                            maxLength="4"
+                                        />
+                                        <button type="submit" className="w-full bg-white text-black font-semibold py-3 rounded-lg hover:bg-zinc-200 transition">
+                                            Accedi
+                                        </button>
+                                    </form>
                                 </div>
 
-                                {/* Tasto WhatsApp Negozio */}
-                                <a 
-                                    href={`https://wa.me/${SHOP_WHATSAPP}?text=Salve,%20vorrei%20prenotare%20un%20appuntamento%20presso%20Barberia%20Romana.`} 
-                                    target="_blank" 
-                                    rel="noreferrer"
-                                    className="block w-full text-center bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition"
-                                >
-                                    Prenota su WhatsApp
-                                </a>
-                            </div>
-                        )}
-
-                        {/* VISTA STAFF */}
-                        {view === 'staff' && (
-                            <div>
-                                {!isAuthorized ? (
-                                    <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl text-center space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <h2 className="text-lg font-semibold">Area Riservata Staff</h2>
-                                            <button onClick={() => setView('client')} className="text-xs text-zinc-400 hover:text-white underline">
-                                                ← Torna alla Tessera
-                                            </button>
+                                {/* Info Servizi per i clienti che aprono la pagina */}
+                                <div className="space-y-3 pt-4">
+                                    <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">I Nostri Servizi</h3>
+                                    <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="font-bold text-amber-500">Tessera Fedeltà</span>
+                                            <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">5 Timbri</span>
                                         </div>
-                                        <form onSubmit={handleLogin} className="space-y-4">
-                                            <input 
-                                                type="password" 
-                                                placeholder="Inserisci PIN (••••)" 
-                                                value={pinInput}
-                                                onChange={(e) => setPinInput(e.target.value)}
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-center text-lg tracking-widest text-white focus:outline-none focus:border-white"
-                                                maxLength="4"
-                                            />
-                                            <button type="submit" className="w-full bg-white text-black font-semibold py-3 rounded-lg hover:bg-zinc-200 transition">
-                                                Accedi
-                                            </button>
-                                        </form>
+                                        <p className="text-xs text-zinc-400">Ogni 5 timbri, il 5° servizio è scontato del 50%!</p>
                                     </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800">
-                                            <span className="text-sm font-medium text-emerald-400">● Staff Autorizzato</span>
-                                            <button onClick={() => { setIsAuthorized(false); setView('client'); }} className="text-xs text-zinc-400 hover:text-white underline">
-                                                Esci alla Tessera
-                                            </button>
+                                    <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="font-bold text-amber-600">Bronze, Silver & Gold</span>
+                                            <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-zinc-300">Abbonamenti</span>
                                         </div>
+                                        <p className="text-xs text-zinc-400">Pacchetti dedicati da 2, 4 o 10 servizi.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            /* PANNELLO DI GESTIONE STAFF */
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                                    <span className="text-sm font-medium text-emerald-400">● Staff Autorizzato</span>
+                                    <button onClick={() => setIsAuthorized(false)} className="text-xs text-zinc-400 hover:text-white underline">
+                                        Blocca / Esci
+                                    </button>
+                                </div>
 
-                                        {/* Ricerca Cliente */}
-                                        <div>
-                                            <input 
-                                                type="text" 
-                                                placeholder="Cerca cliente per nome o telefono..." 
-                                                value={searchPhone}
-                                                onChange={(e) => setSearchPhone(e.target.value)}
-                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-white"
-                                            />
-                                        </div>
+                                {/* Form Aggiungi Nuovo Cliente */}
+                                <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3">
+                                    <h3 className="font-semibold text-sm">Registra Nuovo Cliente</h3>
+                                    <form onSubmit={handleAddClient} className="space-y-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Nome e Cognome" 
+                                            value={newClientName}
+                                            onChange={(e) => setNewClientName(e.target.value)}
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-white"
+                                        />
+                                        <input 
+                                            type="tel" 
+                                            placeholder="Numero di Telefono (es. 3331234567)" 
+                                            value={newClientPhone}
+                                            onChange={(e) => setNewClientPhone(e.target.value)}
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-white"
+                                        />
+                                        <button type="submit" className="w-full bg-white text-black font-semibold py-2.5 rounded-lg hover:bg-zinc-200 text-sm transition">
+                                            + Aggiungi Cliente in Lista
+                                        </button>
+                                    </form>
+                                </div>
 
-                                        {/* Lista Clienti */}
-                                        <div className="space-y-4">
-                                            {clients
-                                                .filter(c => c.name.toLowerCase().includes(searchPhone.toLowerCase()) || c.phone.includes(searchPhone))
-                                                .map(client => {
-                                                    const isInactive = checkIfInactive(client.lastVisit);
-                                                    return (
-                                                        <div key={client.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-4">
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className={`w-2.5 h-2.5 rounded-full ${isInactive ? 'bg-orange-500 animate-pulse' : 'bg-emerald-500'}`}></span>
-                                                                        <h3 className="font-bold text-base">{client.name}</h3>
-                                                                    </div>
-                                                                    <p className="text-xs text-zinc-400">Tel: {client.phone}</p>
-                                                                </div>
-                                                                <div className="flex gap-2 items-center">
-                                                                    {isInactive && client.sub && (
-                                                                        <button 
-                                                                            onClick={() => sendWhatsAppReminder(client.name, client.phone, client.sub.type)}
-                                                                            className="text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-600/40 px-2 py-1 rounded hover:bg-emerald-600/30 transition"
-                                                                        >
-                                                                            WA
-                                                                        </button>
-                                                                    )}
-                                                                    <button 
-                                                                        onClick={() => deleteClient(client.id)}
-                                                                        className="text-xs bg-red-900/20 text-red-400 border border-red-800/40 px-2 py-1 rounded hover:bg-red-900/40 transition"
-                                                                        title="Elimina cliente"
-                                                                    >
-                                                                        Elimina
-                                                                    </button>
-                                                                </div>
+                                {/* Ricerca Cliente */}
+                                <div>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Cerca cliente per nome o telefono..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-white"
+                                    />
+                                </div>
+
+                                {/* Lista Clienti */}
+                                <div className="space-y-4">
+                                    {clients
+                                        .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery))
+                                        .map(client => (
+                                            <div key={client.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-bold text-base">{client.name}</h3>
+                                                        <p className="text-xs text-zinc-400">Tel: {client.phone}</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button 
+                                                            onClick={() => sendClientCardWhatsApp(client)}
+                                                            className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded font-medium transition"
+                                                            title="Invia tessera via WhatsApp"
+                                                        >
+                                                            Invia Tessera WA
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => deleteClient(client.id)}
+                                                            className="text-xs bg-red-900/20 text-red-400 border border-red-800/40 px-2 py-1.5 rounded hover:bg-red-900/40 transition"
+                                                        >
+                                                            Elimina
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Gestione Tessere Fedeltà Standard */}
+                                                <div className="border-t border-zinc-800 pt-3">
+                                                    <div className="flex justify-between items-center text-xs mb-2">
+                                                        <span className="text-zinc-400">Tessera Fedeltà (Timbri: {client.stamps}/5)</span>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => updateStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
+                                                        <button onClick={() => updateStamps(client.id, 1)} className="flex-1 bg-white text-black hover:bg-zinc-200 py-1.5 rounded text-sm font-semibold">+ Aggiungi Timbro</button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Gestione Abbonamenti */}
+                                                <div className="border-t border-zinc-800 pt-3">
+                                                    {client.sub ? (
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between items-center text-xs">
+                                                                <span className="font-bold text-amber-500">{client.sub.type} ({client.sub.serviceName})</span>
+                                                                <span className="text-zinc-400">Usati: {client.sub.used} / {client.sub.type === 'Bronze' ? 2 : client.sub.type === 'Silver' ? 4 : 10}</span>
                                                             </div>
-
-                                                            {/* Gestione Tessere Fedeltà Standard */}
-                                                            <div className="border-t border-zinc-800 pt-3">
-                                                                <div className="flex justify-between items-center text-xs mb-2">
-                                                                    <span className="text-zinc-400">Tessera Fedeltà (Timbri: {client.stamps}/5)</span>
+                                                            <div className="flex gap-2">
+                                                                <button onClick={() => updateSubStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
+                                                                <button onClick={() => updateSubStamps(client.id, 1)} className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded text-sm font-semibold">+ Servizio Abbonamento</button>
                                                             </div>
-                                                                <div className="flex gap-2">
-                                                                    <button onClick={() => updateStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
-                                                                    <button onClick={() => updateStamps(client.id, 1)} className="flex-1 bg-white text-black hover:bg-zinc-200 py-1.5 rounded text-sm font-semibold">+ Aggiungi Timbro</button>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Gestione Abbonamenti */}
-                                                            <div className="border-t border-zinc-800 pt-3">
-                                                                {client.sub ? (
-                                                                    <div className="space-y-2">
-                                                                        <div className="flex justify-between items-center text-xs">
-                                                                            <span className="font-bold text-amber-500">{client.sub.type} ({client.sub.serviceName})</span>
-                                                                            <span className="text-zinc-400">Usati: {client.sub.used} / {client.sub.type === 'Bronze' ? 2 : client.sub.type === 'Silver' ? 4 : 10}</span>
-                                                                        </div>
-                                                                        <div className="flex gap-2">
-                                                                            <button onClick={() => updateSubStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
-                                                                            <button onClick={() => updateSubStamps(client.id, 1)} className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded text-sm font-semibold">+ Servizio Abbonamento</button>
-                                                                        </div>
-                                                                        <button onClick={() => removeSub(client.id)} className="w-full bg-red-900/30 text-red-400 border border-red-800/50 hover:bg-red-900/50 py-1.5 rounded text-xs transition mt-2">
-                                                                            Termina e Rimuovi Abbonamento
-                                                                        </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="space-y-2">
-                                                                        <p className="text-xs text-zinc-400">Nessun abbonamento attivo. Assegna:</p>
-                                                                        <div className="grid grid-cols-3 gap-2">
-                                                                            <button onClick={() => assignSub(client.id, 'Bronze', 'Taglio')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Bronze</button>
-                                                                            <button onClick={() => assignSub(client.id, 'Silver', 'Barba')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Silver</button>
-                                                                            <button onClick={() => assignSub(client.id, 'Gold', 'Completo')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Gold</button>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
+                                                            <button onClick={() => removeSub(client.id)} className="w-full bg-red-900/30 text-red-400 border border-red-800/50 hover:bg-red-900/50 py-1.5 rounded text-xs transition mt-2">
+                                                                Termina e Rimuovi Abbonamento
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            <p className="text-xs text-zinc-400">Nessun abbonamento attivo. Assegna:</p>
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                <button onClick={() => assignSub(client.id, 'Bronze', 'Taglio')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Bronze</button>
+                                                                <button onClick={() => assignSub(client.id, 'Silver', 'Barba')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Silver</button>
+                                                                <button onClick={() => assignSub(client.id, 'Gold', 'Completo')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Gold</button>
                                                             </div>
                                                         </div>
-                                                    );
-                                                })
-                                            }
-                                        </div>
-                                    </div>
-                                )}
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    }
+                                </div>
                             </div>
                         )}
                     </div>
 
                     {/* Footer con accesso Staff nascosto in basso */}
                     <footer className="text-center pt-8 pb-4 border-t border-zinc-900 mt-8">
-                        {view === 'client' && (
+                        {!isAuthorized && (
                             <button 
-                                onClick={() => setView('staff')} 
+                                onClick={() => setIsAuthorized(false)} 
                                 className="text-[11px] text-zinc-600 hover:text-zinc-400 tracking-wider uppercase transition"
                             >
                                 Area Riservata (Staff)
