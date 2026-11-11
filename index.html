@@ -26,11 +26,22 @@
             const [clientNameInput, setClientNameInput] = React.useState('');
             const [activeClient, setActiveClient] = React.useState(null);
 
-            // Database simulato clienti
-            const [clients, setClients] = React.useState([
-                { id: 1, name: "Marco Rossi", phone: "3331234567", stamps: 3, sub: null, lastVisit: "2026-11-01" },
-                { id: 2, name: "Luca Bianchi", phone: "3389876543", stamps: 5, sub: null, lastVisit: "2026-10-25" },
-            ]);
+            // Database clienti sincronizzato con la memoria del dispositivo
+            const [clients, setClients] = React.useState(() => {
+                const saved = localStorage.getItem('barberia_romana_clients');
+                if (saved) {
+                    try { return JSON.parse(saved); } catch (e) { }
+                }
+                return [
+                    { id: 1, name: "Marco Rossi", phone: "3331234567", stamps: 3, sub: null, lastVisit: "2026-11-01" },
+                    { id: 2, name: "Luca Bianchi", phone: "3389876543", stamps: 5, sub: null, lastVisit: "2026-10-25" },
+                ];
+            });
+
+            // Salva i clienti ogni volta che cambiano
+            React.useEffect(() => {
+                localStorage.setItem('barberia_romana_clients', JSON.stringify(clients));
+            }, [clients]);
 
             const STAFF_PIN = "1893";
             const SHOP_WHATSAPP = "3318610302";
@@ -65,56 +76,65 @@
                         sub: null,
                         lastVisit: new Date().toISOString().split('T')[0]
                     };
-                    setClients([...clients, newC]);
+                    const updatedList = [...clients, newC];
+                    setClients(updatedList);
                     setActiveClient(newC);
                 }
             };
 
             const updateStamps = (clientId, delta) => {
-                setClients(clients.map(c => {
+                const updatedClients = clients.map(c => {
                     if (c.id === clientId) {
                         let newStamps = Math.max(0, Math.min(5, c.stamps + delta));
-                        const updated = { ...c, stamps: newStamps, lastVisit: new Date().toISOString().split('T')[0] };
-                        if (activeClient && activeClient.id === clientId) setActiveClient(updated);
-                        return updated;
+                        return { ...c, stamps: newStamps, lastVisit: new Date().toISOString().split('T')[0] };
                     }
                     return c;
-                }));
+                });
+                setClients(updatedClients);
+                if (activeClient && activeClient.id === clientId) {
+                    setActiveClient(updatedClients.find(c => c.id === clientId));
+                }
             };
 
             const updateSubStamps = (clientId, delta) => {
-                setClients(clients.map(c => {
+                const updatedClients = clients.map(c => {
                     if (c.id === clientId && c.sub) {
                         let maxServices = c.sub.type === 'Bronze' ? 2 : c.sub.type === 'Silver' ? 4 : 10;
                         let newUsed = Math.max(0, Math.min(maxServices, c.sub.used + delta));
-                        const updated = { ...c, sub: { ...c.sub, used: newUsed }, lastVisit: new Date().toISOString().split('T')[0] };
-                        if (activeClient && activeClient.id === clientId) setActiveClient(updated);
-                        return updated;
+                        return { ...c, sub: { ...c.sub, used: newUsed }, lastVisit: new Date().toISOString().split('T')[0] };
                     }
                     return c;
-                }));
+                });
+                setClients(updatedClients);
+                if (activeClient && activeClient.id === clientId) {
+                    setActiveClient(updatedClients.find(c => c.id === clientId));
+                }
             };
 
             const assignSub = (clientId, type, serviceName) => {
-                setClients(clients.map(c => {
+                const updatedClients = clients.map(c => {
                     if (c.id === clientId) {
-                        const updated = { ...c, sub: { type, serviceName, used: 0, startDate: new Date().toISOString().split('T')[0] }, lastVisit: new Date().toISOString().split('T')[0] };
-                        if (activeClient && activeClient.id === clientId) setActiveClient(updated);
-                        return updated;
+                        return { ...c, sub: { type, serviceName, used: 0, startDate: new Date().toISOString().split('T')[0] }, lastVisit: new Date().toISOString().split('T')[0] };
                     }
                     return c;
-                }));
+                });
+                setClients(updatedClients);
+                if (activeClient && activeClient.id === clientId) {
+                    setActiveClient(updatedClients.find(c => c.id === clientId));
+                }
             };
 
             const removeSub = (clientId) => {
-                setClients(clients.map(c => {
+                const updatedClients = clients.map(c => {
                     if (c.id === clientId) {
-                        const updated = { ...c, sub: null };
-                        if (activeClient && activeClient.id === clientId) setActiveClient(updated);
-                        return updated;
+                        return { ...c, sub: null };
                     }
                     return c;
-                }));
+                });
+                setClients(updatedClients);
+                if (activeClient && activeClient.id === clientId) {
+                    setActiveClient(updatedClients.find(c => c.id === clientId));
+                }
             };
 
             const checkIfInactive = (lastVisit) => {
