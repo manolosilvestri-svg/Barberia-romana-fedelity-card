@@ -53,7 +53,7 @@
 
             const updateSubStamps = (clientId, delta) => {
                 setClients(clients.map(c => {
-                    if (c.id && c.sub) {
+                    if (c.id === clientId && c.sub) {
                         let maxServices = c.sub.type === 'Bronze' ? 2 : c.sub.type === 'Silver' ? 4 : 10;
                         let newUsed = Math.max(0, Math.min(maxServices, c.sub.used + delta));
                         return { ...c, sub: { ...c.sub, used: newUsed }, lastVisit: new Date().toISOString().split('T')[0] };
