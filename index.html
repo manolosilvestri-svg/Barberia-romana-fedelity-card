@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barberia Romana - Tessera Digitale</title>
+    <title>Barberia Romana - Tessera & Abbonamenti</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -42,11 +42,9 @@
             const [isAuthorized, setIsAuthorized] = React.useState(false);
             const [searchQuery, setSearchQuery] = React.useState('');
 
-            // Campi per aggiungere un nuovo cliente
             const [newClientName, setNewClientName] = React.useState('');
             const [newClientPhone, setNewClientPhone] = React.useState('');
 
-            // Database locale persistente
             const [clients, setClients] = React.useState(() => {
                 const saved = localStorage.getItem('barberia_romana_staff_clients');
                 if (saved) {
@@ -54,7 +52,7 @@
                 }
                 return [
                     { id: 1, name: "Marco Rossi", phone: "3331234567", stamps: 3, sub: null, lastVisit: "2026-11-01" },
-                    { id: 2, name: "Luca Bianchi", phone: "3389876543", stamps: 5, sub: null, lastVisit: "2026-10-25" },
+                    { id: 2, name: "Luca Bianchi", phone: "3389876543", stamps: 0, sub: { type: "Silver", serviceName: "Barba & Taglio", used: 2 }, lastVisit: "2026-10-25" },
                 ];
             });
 
@@ -141,7 +139,6 @@
                 }
             };
 
-            // Funzioni di Backup e Ripristino Dati
             const exportBackup = () => {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(clients, null, 2));
                 const downloadAnchor = document.createElement('a');
@@ -172,7 +169,6 @@
                 }
             };
 
-            // Genera il link univoco con i dati del cliente e apre WhatsApp
             const sendClientCardWhatsApp = (client) => {
                 const payload = {
                     n: client.name,
@@ -190,10 +186,10 @@
                 const baseUrl = window.location.origin + window.location.pathname;
                 const personalLink = `${baseUrl}?card=${encodedData}`;
 
-                const subText = client.sub ? `\nAbbonamento ${client.sub.type}: ${client.sub.used}/${payload.sub.m} servizi usati` : '';
+                const cardTypeMsg = client.sub ? `Abbonamento ${client.sub.type} (${client.sub.used}/${payload.sub.m} usati)` : `Tessera Fedeltà (${client.stamps}/5 timbri)`;
                 const message = encodeURIComponent(
-                    `Ciao ${client.name}! Ecco la tua tessera digitale aggiornata di Barberia Romana 💈\n` +
-                    `Timbri attuali: ${client.stamps} / 5${subText}\n\n` +
+                    `Ciao ${client.name}! Ecco la tua card digitale aggiornata di Barberia Romana 💈\n` +
+                    `Stato: ${cardTypeMsg}\n\n` +
                     `Visualizza la tua tessera grafica qui:\n${personalLink}`
                 );
 
@@ -206,21 +202,29 @@
             };
 
             // =====================================================================
-            // VISTA 1: SCHERMATA GRAFICA PER IL CLIENTE (QUANDO APRE IL LINK DA WA)
+            // VISTA 1: SCHERMATA GRAFICA PER IL CLIENTE (TESSERA O ABBONAMENTO)
             // =====================================================================
             if (sharedCard) {
+                const isSub = sharedCard.sub !== null;
+                const subType = isSub ? sharedCard.sub.t : '';
+                
+                // Colori dinamici in base al tipo di card
+                const accentColor = isSub 
+                    ? (subType === 'Bronze' ? 'amber-600' : subType === 'Silver' ? 'slate-300' : 'yellow-400')
+                    : 'amber-500';
+
                 return (
                     <div className="max-w-md mx-auto p-4 pb-8 flex flex-col min-h-screen justify-between">
                         <div>
                             <header className="text-center py-6 border-b border-zinc-800 mb-6">
                                 <h1 className="text-2xl font-bold tracking-widest uppercase text-amber-500 neon-title">Barberia Romana</h1>
-                                <p className="text-xs text-zinc-400 mt-1">Tessera Digitale Ufficiale</p>
+                                <p className="text-xs text-zinc-400 mt-1">{isSub ? `Abbonamento ${subType} Ufficiale` : 'Tessera Fedeltà Digitale'}</p>
                             </header>
 
                             <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-amber-500/40 rounded-2xl p-6 shadow-2xl space-y-6 relative overflow-hidden">
                                 <div className="flex justify-between items-start border-b border-zinc-800 pb-4">
                                     <div>
-                                        <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold block mb-1">Titolare Tessera</span>
+                                        <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold block mb-1">Titolare Card</span>
                                         <h2 className="text-xl font-bold text-white">{sharedCard.n}</h2>
                                     </div>
                                     <div className="bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
@@ -229,60 +233,74 @@
                                     </div>
                                 </div>
 
-                                <div className="text-center py-2">
-                                    <p className="text-xs text-zinc-400 mb-4">Colleziona 5 timbri: il 5° servizio è al <strong className="text-white">50% di sconto</strong></p>
-                                    
-                                    <div className="flex justify-center gap-2.5 my-4">
-                                        {[1, 2, 3, 4, 5].map((stamp) => {
-                                            const isCompleted = stamp <= sharedCard.s;
-                                            const isFifth = stamp === 5;
-                                            return (
-                                                <div 
-                                                    key={stamp} 
-                                                    className={`w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center font-bold transition-all ${
-                                                        isCompleted 
-                                                            ? 'border-amber-500 bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
-                                                            : isFifth 
-                                                                ? 'border-amber-500/40 text-amber-500/60 border-dashed' 
-                                                                : 'border-zinc-700 text-zinc-600'
-                                                    }`}
-                                                >
-                                                    {isCompleted ? (
-                                                        <span className="text-lg">✓</span>
-                                                    ) : isFifth ? (
-                                                        <span className="text-[10px] leading-tight">-50%</span>
-                                                    ) : (
-                                                        <span className="text-sm">{stamp}</span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <div className="mt-4 inline-block bg-zinc-900 border border-zinc-800 px-4 py-1.5 rounded-full">
-                                        <span className="text-xs text-zinc-300">Stato attuale: <strong className="text-amber-500">{sharedCard.s} su 5 timbri</strong></span>
-                                    </div>
-                                </div>
-
-                                {sharedCard.sub && (
-                                    <div className="border-t border-zinc-800 pt-5 space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Abbonamento Attivo</span>
-                                            <span className="text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded">
-                                                {sharedCard.sub.t} Card ({sharedCard.sub.srv})
-                                            </span>
+                                {isSub ? (
+                                    /* GRAFICA DEDICATA ABBONAMENTO CON BOX DA TIMBRARE */
+                                    <div className="text-center py-2 space-y-4">
+                                        <div className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-xl">
+                                            <span className="text-xs text-zinc-400 block">Tipologia Servizio</span>
+                                            <span className="text-sm font-bold text-amber-400">{sharedCard.sub.srv} ({sharedCard.sub.t} Card)</span>
                                         </div>
-                                        
-                                        <div className="w-full bg-zinc-800 h-2.5 rounded-full overflow-hidden">
-                                            <div 
-                                                className="bg-amber-500 h-full rounded-full" 
-                                                style={{ width: `${(sharedCard.sub.u / sharedCard.sub.m) * 100}%` }}
-                                            ></div>
+
+                                        <p className="text-xs text-zinc-400">Servizi utilizzati: <strong className="text-white">{sharedCard.sub.u}</strong> su <strong className="text-white">{sharedCard.sub.m}</strong></p>
+
+                                        {/* Griglia box abbonamento */}
+                                        <div className="grid grid-cols-5 gap-2 my-4">
+                                            {Array.from({ length: sharedCard.sub.m }, (_, index) => {
+                                                const slotNumber = index + 1;
+                                                const isUsed = slotNumber <= sharedCard.sub.u;
+                                                return (
+                                                    <div 
+                                                        key={index} 
+                                                        className={`h-12 rounded-xl border-2 flex flex-col items-center justify-center font-bold text-xs transition-all ${
+                                                            isUsed 
+                                                                ? 'border-amber-500 bg-amber-500 text-black shadow-[0_0_10px_rgba(245,158,11,0.3)]' 
+                                                                : 'border-zinc-700 bg-black/40 text-zinc-500'
+                                                        }`}
+                                                    >
+                                                        {isUsed ? '✓' : slotNumber}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
+
+                                        <div className="inline-block bg-zinc-900 border border-zinc-800 px-4 py-1.5 rounded-full">
+                                            <span className="text-xs text-zinc-300">Servizi rimanenti: <strong className="text-emerald-400">{sharedCard.sub.m - sharedCard.sub.u}</strong></span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* GRAFICA TESSERA FEDELTÀ STANDARD 5 TIMBRI */
+                                    <div className="text-center py-2">
+                                        <p className="text-xs text-zinc-400 mb-4">Colleziona 5 timbri: il 5° servizio è al <strong className="text-white">50% di sconto</strong></p>
                                         
-                                        <div className="flex justify-between text-xs text-zinc-400">
-                                            <span>Utilizzati: <strong className="text-white">{sharedCard.sub.u}</strong></span>
-                                            <span>Rimanenti: <strong className="text-emerald-400">{sharedCard.sub.m - sharedCard.sub.u}</strong> su {sharedCard.sub.m}</span>
+                                        <div className="flex justify-center gap-2.5 my-4">
+                                            {[1, 2, 3, 4, 5].map((stamp) => {
+                                                const isCompleted = stamp <= sharedCard.s;
+                                                const isFifth = stamp === 5;
+                                                return (
+                                                    <div 
+                                                        key={stamp} 
+                                                        className={`w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center font-bold transition-all ${
+                                                            isCompleted 
+                                                                ? 'border-amber-500 bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
+                                                                : isFifth 
+                                                                    ? 'border-amber-500/40 text-amber-500/60 border-dashed' 
+                                                                    : 'border-zinc-700 text-zinc-600'
+                                                        }`}
+                                                    >
+                                                        {isCompleted ? (
+                                                            <span className="text-lg">✓</span>
+                                                        ) : isFifth ? (
+                                                            <span className="text-[10px] leading-tight">-50%</span>
+                                                        ) : (
+                                                            <span className="text-sm">{stamp}</span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="mt-4 inline-block bg-zinc-900 border border-zinc-800 px-4 py-1.5 rounded-full">
+                                            <span className="text-xs text-zinc-300">Stato attuale: <strong className="text-amber-500">{sharedCard.s} su 5 timbri</strong></span>
                                         </div>
                                     </div>
                                 )}
@@ -306,7 +324,7 @@
                         </div>
 
                         <footer className="text-center pt-8 pb-4 text-[11px] text-zinc-600">
-                            Barberia Romana • Tessera Digitale Personale
+                            Barberia Romana • Card Digitale Personale
                         </footer>
                     </div>
                 );
@@ -362,14 +380,12 @@
                                     </button>
                                 </div>
 
-                                {/* Barra Backup & Ripristino Dati */}
                                 <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between gap-2">
                                     <span className="text-xs text-zinc-400 font-medium pl-1">Salvataggio Dati:</span>
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={exportBackup} 
                                             className="text-xs bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-lg transition font-semibold"
-                                            title="Scarica un file di backup con tutti i clienti"
                                         >
                                             💾 Esporta Backup
                                         </button>
@@ -380,7 +396,6 @@
                                     </div>
                                 </div>
 
-                                {/* Form Aggiungi Nuovo Cliente */}
                                 <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3 shadow-lg">
                                     <h3 className="font-semibold text-sm text-amber-500">Registra Nuovo Cliente</h3>
                                     <form onSubmit={handleAddClient} className="space-y-2">
@@ -404,7 +419,6 @@
                                     </form>
                                 </div>
 
-                                {/* Ricerca Cliente */}
                                 <div>
                                     <input 
                                         type="text" 
@@ -415,7 +429,6 @@
                                     />
                                 </div>
 
-                                {/* Lista Clienti */}
                                 <div className="space-y-4">
                                     {clients
                                         .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery))
@@ -431,7 +444,7 @@
                                                             onClick={() => sendClientCardWhatsApp(client)}
                                                             className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded font-semibold transition shadow"
                                                         >
-                                                            Invia Tessera WA
+                                                            Invia Card WA
                                                         </button>
                                                         <button 
                                                             onClick={() => deleteClient(client.id)}
@@ -442,44 +455,40 @@
                                                     </div>
                                                 </div>
 
-                                                {/* Gestione Timbri */}
-                                                <div className="border-t border-zinc-800 pt-3">
-                                                    <div className="flex justify-between items-center text-xs mb-2">
-                                                        <span className="text-zinc-400">Tessera Fedeltà (Timbri: <strong className="text-amber-500">{client.stamps}/5</strong>)</span>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <button onClick={() => updateStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
-                                                        <button onClick={() => updateStamps(client.id, 1)} className="flex-1 bg-white text-black hover:bg-zinc-200 py-1.5 rounded text-sm font-semibold">+ Aggiungi Timbro</button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Gestione Abbonamenti */}
-                                                <div className="border-t border-zinc-800 pt-3">
-                                                    {client.sub ? (
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between items-center text-xs">
-                                                                <span className="font-bold text-amber-500">{client.sub.type} ({client.sub.serviceName})</span>
-                                                                <span className="text-zinc-400">Usati: <strong className="text-white">{client.sub.used}</strong> / {client.sub.type === 'Bronze' ? 2 : client.sub.type === 'Silver' ? 4 : 10}</span>
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={() => updateSubStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
-                                                                <button onClick={() => updateSubStamps(client.id, 1)} className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded text-sm font-semibold">+ Servizio Abbonamento</button>
-                                                            </div>
-                                                            <button onClick={() => removeSub(client.id)} className="w-full bg-red-900/30 text-red-400 border border-red-800/50 hover:bg-red-900/50 py-1.5 rounded text-xs transition mt-2">
-                                                                Termina e Rimuovi Abbonamento
-                                                            </button>
+                                                {/* Se ha un abbonamento attivo mostra la gestione abbonamento, altrimenti la tessera timbri */}
+                                                {client.sub ? (
+                                                    <div className="border-t border-zinc-800 pt-3 space-y-3">
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="font-bold text-amber-500">Abbonamento {client.sub.type} ({client.sub.serviceName})</span>
+                                                            <span className="text-zinc-400">Usati: <strong className="text-white">{client.sub.used}</strong> / {client.sub.type === 'Bronze' ? 2 : client.sub.type === 'Silver' ? 4 : 10}</span>
                                                         </div>
-                                                    ) : (
-                                                        <div className="space-y-2">
-                                                            <p className="text-xs text-zinc-400">Assegna abbonamento:</p>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => updateSubStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
+                                                            <button onClick={() => updateSubStamps(client.id, 1)} className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded text-sm font-semibold">+ Servizio Abbonamento</button>
+                                                        </div>
+                                                        <button onClick={() => removeSub(client.id)} className="w-full bg-red-900/30 text-red-400 border border-red-800/50 hover:bg-red-900/50 py-1.5 rounded text-xs transition">
+                                                            Termina e Rimuovi Abbonamento
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="border-t border-zinc-800 pt-3 space-y-3">
+                                                        <div className="flex justify-between items-center text-xs mb-1">
+                                                            <span className="text-zinc-400">Tessera Fedeltà (Timbri: <strong className="text-amber-500">{client.stamps}/5</strong>)</span>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => updateStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
+                                                            <button onClick={() => updateStamps(client.id, 1)} className="flex-1 bg-white text-black hover:bg-zinc-200 py-1.5 rounded text-sm font-semibold">+ Aggiungi Timbro</button>
+                                                        </div>
+                                                        <div className="pt-2 border-t border-zinc-800/60">
+                                                            <p className="text-[11px] text-zinc-400 mb-1.5">Oppure converti in abbonamento:</p>
                                                             <div className="grid grid-cols-3 gap-2">
-                                                                <button onClick={() => assignSub(client.id, 'Bronze', 'Taglio')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Bronze</button>
-                                                                <button onClick={() => assignSub(client.id, 'Silver', 'Barba')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Silver</button>
-                                                                <button onClick={() => assignSub(client.id, 'Gold', 'Completo')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium">Gold</button>
+                                                                <button onClick={() => assignSub(client.id, 'Bronze', 'Taglio')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium text-amber-600">Bronze</button>
+                                                                <button onClick={() => assignSub(client.id, 'Silver', 'Barba')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium text-slate-300">Silver</button>
+                                                                <button onClick={() => assignSub(client.id, 'Gold', 'Completo')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium text-yellow-400">Gold</button>
                                                             </div>
                                                         </div>
-                                                    )}
-                                                </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))
                                     }
