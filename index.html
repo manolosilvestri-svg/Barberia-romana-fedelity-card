@@ -188,7 +188,6 @@
                 }
             };
 
-            // Genera il link univoco del cliente
             const getClientPersonalLink = (client) => {
                 const payload = {
                     n: client.name,
@@ -209,9 +208,10 @@
                 const personalLink = getClientPersonalLink(client);
                 const cardTypeMsg = client.sub ? `Abbonamento ${client.sub.type} (${client.sub.used} usati)` : `Tessera Fedeltà (${client.stamps}/5 timbri)`;
                 const message = encodeURIComponent(
-                    `Ciao ${client.name}! Ecco la tua card digitale aggiornata di Barberia Romana 💈\n` +
+                    `Ciao ${client.name}! Ecco la tua card digitale ufficiale di Barberia Romana 💈\n` +
+                    `Intestata a: ${client.name}\n` +
                     `Stato: ${cardTypeMsg}\n\n` +
-                    `Visualizza la tua tessera grafica qui:\n${personalLink}`
+                    `Visualizza la tua tessera personale qui:\n${personalLink}`
                 );
 
                 let waPhone = client.phone.replace(/[^0-9]/g, '');
@@ -225,14 +225,14 @@
             const copyClientLink = (client) => {
                 const personalLink = getClientPersonalLink(client);
                 navigator.clipboard.writeText(personalLink).then(() => {
-                    alert(`Link di ${client.name} copiato negli appunti! Puoi incollarlo dove preferisci.`);
+                    alert(`Link personale di ${client.name} copiato negli appunti!`);
                 }).catch(() => {
                     prompt("Copia il link della card:", personalLink);
                 });
             };
 
             // =====================================================================
-            // VISTA 1: SCHERMATA GRAFICA PER IL CLIENTE
+            // VISTA 1: SCHERMATA GRAFICA PER IL CLIENTE (CON NOME E COGNOME IN EVIDENZA)
             // =====================================================================
             if (sharedCard) {
                 const isSub = sharedCard.sub !== null;
@@ -278,16 +278,22 @@
                                 <p className="text-xs text-zinc-400 mt-1">{isSub ? `Abbonamento ${subType}` : 'Tessera Fedeltà Digitale'}</p>
                             </header>
 
-                            <div className={`bg-gradient-to-b ${isSub ? theme.cardBg : 'from-zinc-900 to-zinc-950'} border ${isSub ? theme.border : 'border-amber-500/40'} rounded-2xl p-6 shadow-2xl space-y-6 relative overflow-hidden`}>
-                                <div className="flex justify-between items-start border-b border-zinc-800/80 pb-4">
-                                    <div>
-                                        <span className={`text-[10px] uppercase tracking-widest font-bold block mb-1 ${isSub ? theme.label : 'text-amber-500'}`}>Titolare Card</span>
-                                        <h2 className="text-xl font-bold text-white">{sharedCard.n}</h2>
+                            {/* Card Personale con Nome e Cognome in primo piano */}
+                            <div className={`bg-gradient-to-b ${isSub ? theme.cardBg : 'from-zinc-900 to-zinc-950'} border ${isSub ? theme.border : 'border-zinc-700'} rounded-2xl p-6 shadow-2xl space-y-6 relative overflow-hidden`}>
+                                
+                                {/* Header Intestazione Titolare */}
+                                <div className="border-b border-zinc-800 pb-4 space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-semibold">Titolare Ufficiale</span>
+                                        <div className="bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                            <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Card Personale</span>
+                                        </div>
                                     </div>
-                                    <div className="bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                        <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Verificata</span>
-                                    </div>
+                                    {/* NOME E COGNOME GRANDE SULL'IMMAGINE */}
+                                    <h2 className="text-2xl font-extrabold text-white tracking-wide bg-black/40 border border-zinc-800/80 px-4 py-2.5 rounded-xl text-center shadow-inner">
+                                        {sharedCard.n}
+                                    </h2>
                                 </div>
 
                                 {isSub ? (
@@ -332,9 +338,9 @@
                                                         key={stamp} 
                                                         className={`w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center font-bold transition-all ${
                                                             isCompleted 
-                                                                ? 'border-amber-500 bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
+                                                                ? 'border-white bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)]' 
                                                                 : isFifth 
-                                                                    ? 'border-amber-500/40 text-amber-500/60 border-dashed' 
+                                                                    ? 'border-zinc-500/50 text-zinc-400 border-dashed' 
                                                                     : 'border-zinc-700 text-zinc-600'
                                                         }`}
                                                     >
@@ -351,7 +357,7 @@
                                         </div>
 
                                         <div className="mt-4 inline-block bg-zinc-900 border border-zinc-800 px-4 py-1.5 rounded-full">
-                                            <span className="text-xs text-zinc-300">Stato attuale: <strong className="text-amber-500">{sharedCard.s} su 5 timbri</strong></span>
+                                            <span className="text-xs text-zinc-300">Stato attuale: <strong className="text-white">{sharedCard.s} su 5 timbri</strong></span>
                                         </div>
                                     </div>
                                 )}
@@ -543,7 +549,7 @@
                                                                         {tier}
                                                                     </button>
                                                                 ))}
-                                                            </div>
+                                                           </div>
                                                         </div>
                                                         <button onClick={() => removeSub(client.id)} className="w-full bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white py-1.5 rounded text-xs transition">
                                                             Termina e Rimuovi Abbonamento
