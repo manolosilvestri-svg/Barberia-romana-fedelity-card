@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barberia Romana - Tessera & Abbonamenti</title>
+    <!-- Configurazione PWA per installare l'app sulla Home del telefono -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Barberia Romana">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -81,13 +85,14 @@
                     return;
                 }
                 const cleanPhone = newClientPhone.replace(/\s+/g, '');
+                const today = new Date().toISOString().split('T')[0];
                 const newC = {
                     id: Date.now(),
                     name: newClientName,
                     phone: cleanPhone,
                     stamps: 0,
                     sub: null,
-                    lastVisit: new Date().toISOString().split('T')[0]
+                    lastVisit: today
                 };
                 setClients([newC, ...clients]);
                 setNewClientName('');
@@ -95,30 +100,44 @@
             };
 
             const updateStamps = (clientId, delta) => {
+                const today = new Date().toISOString().split('T')[0];
                 setClients(clients.map(c => {
                     if (c.id === clientId) {
                         let newStamps = Math.max(0, Math.min(5, c.stamps + delta));
-                        return { ...c, stamps: newStamps, lastVisit: new Date().toISOString().split('T')[0] };
+                        return { ...c, stamps: newStamps, lastVisit: today };
                     }
                     return c;
                 }));
             };
 
             const updateSubStamps = (clientId, delta) => {
+                const today = new Date().toISOString().split('T')[0];
                 setClients(clients.map(c => {
                     if (c.id === clientId && c.sub) {
                         let maxServices = c.sub.type === 'Bronze' ? 2 : c.sub.type === 'Silver' ? 4 : 10;
                         let newUsed = Math.max(0, Math.min(maxServices, c.sub.used + delta));
-                        return { ...c, sub: { ...c.sub, used: newUsed }, lastVisit: new Date().toISOString().split('T')[0] };
+                        return { ...c, sub: { ...c.sub, used: newUsed }, lastVisit: today };
                     }
                     return c;
                 }));
             };
 
             const assignSub = (clientId, type) => {
+                const today = new Date().toISOString().split('T')[0];
                 setClients(clients.map(c => {
                     if (c.id === clientId) {
-                        return { ...c, sub: { type, used: 0, startDate: new Date().toISOString().split('T')[0] }, lastVisit: new Date().toISOString().split('T')[0] };
+                        return { ...c, sub: { type, used: 0, startDate: today }, lastVisit: today };
+                    }
+                    return c;
+                }));
+            };
+
+            const changeSubTier = (clientId, newType) => {
+                setClients(clients.map(c => {
+                    if (c.id === clientId && c.sub) {
+                        let maxServices = newType === 'Bronze' ? 2 : newType === 'Silver' ? 4 : 10;
+                        let newUsed = Math.min(c.sub.used, maxServices);
+                        return { ...c, sub: { ...c.sub, type: newType, used: newUsed } };
                     }
                     return c;
                 }));
@@ -169,7 +188,8 @@
                 }
             };
 
-            const sendClientCardWhatsApp = (client) => {
+            // Genera il link univoco del cliente
+            const getClientPersonalLink = (client) => {
                 const payload = {
                     n: client.name,
                     s: client.stamps,
@@ -180,12 +200,14 @@
                     } : null,
                     d: new Date().toLocaleDateString('it-IT')
                 };
-
                 const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
                 const baseUrl = window.location.origin + window.location.pathname;
-                const personalLink = `${baseUrl}?card=${encodedData}`;
+                return `${baseUrl}?card=${encodedData}`;
+            };
 
-                const cardTypeMsg = client.sub ? `Abbonamento ${client.sub.type} (${client.sub.used}/${payload.sub.m} usati)` : `Tessera Fedeltà (${client.stamps}/5 timbri)`;
+            const sendClientCardWhatsApp = (client) => {
+                const personalLink = getClientPersonalLink(client);
+                const cardTypeMsg = client.sub ? `Abbonamento ${client.sub.type} (${client.sub.used} usati)` : `Tessera Fedeltà (${client.stamps}/5 timbri)`;
                 const message = encodeURIComponent(
                     `Ciao ${client.name}! Ecco la tua card digitale aggiornata di Barberia Romana 💈\n` +
                     `Stato: ${cardTypeMsg}\n\n` +
@@ -200,14 +222,22 @@
                 window.open(`https://wa.me/${waPhone}?text=${message}`, '_blank');
             };
 
+            const copyClientLink = (client) => {
+                const personalLink = getClientPersonalLink(client);
+                navigator.clipboard.writeText(personalLink).then(() => {
+                    alert(`Link di ${client.name} copiato negli appunti! Puoi incollarlo dove preferisci.`);
+                }).catch(() => {
+                    prompt("Copia il link della card:", personalLink);
+                });
+            };
+
             // =====================================================================
-            // VISTA 1: SCHERMATA GRAFICA PER IL CLIENTE (TESSERA O ABBONAMENTO)
+            // VISTA 1: SCHERMATA GRAFICA PER IL CLIENTE
             // =====================================================================
             if (sharedCard) {
                 const isSub = sharedCard.sub !== null;
                 const subType = isSub ? sharedCard.sub.t : '';
 
-                // Temi cromatici specifici per Bronze, Silver e Gold
                 const subThemes = {
                     Bronze: {
                         cardBg: 'from-[#23150e] via-zinc-950 to-black',
@@ -261,7 +291,6 @@
                                 </div>
 
                                 {isSub ? (
-                                    /* GRAFICA COLORATA DEDICATA ABBONAMENTO */
                                     <div className="text-center py-2 space-y-4">
                                         <div className={`inline-block border px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${theme.badgeBg}`}>
                                             Abbonamento {subType}
@@ -291,7 +320,6 @@
                                         </div>
                                     </div>
                                 ) : (
-                                    /* GRAFICA TESSERA FEDELTÀ STANDARD (INVARIATA) */
                                     <div className="text-center py-2">
                                         <p className="text-xs text-zinc-400 mb-4">Colleziona 5 timbri: il 5° servizio è al <strong className="text-white">50% di sconto</strong></p>
                                         
@@ -354,7 +382,7 @@
             }
 
             // =====================================================================
-            // VISTA 2: HOME STAFF (NERO, GRIGIO E BIANCO)
+            // VISTA 2: HOME STAFF
             // =====================================================================
             return (
                 <div className="max-w-md mx-auto p-4 pb-8 flex flex-col min-h-screen justify-between">
@@ -461,13 +489,21 @@
                                                     <div>
                                                         <h3 className="font-bold text-base text-white">{client.name}</h3>
                                                         <p className="text-xs text-zinc-400">Tel: {client.phone}</p>
+                                                        <p className="text-[10px] text-zinc-500 mt-0.5">Ultima visita: {client.lastVisit || 'N/D'}</p>
                                                     </div>
-                                                    <div className="flex gap-1.5">
+                                                    <div className="flex gap-1.5 flex-wrap justify-end">
                                                         <button 
                                                             onClick={() => sendClientCardWhatsApp(client)}
                                                             className="text-xs bg-white hover:bg-zinc-200 text-black px-2.5 py-1.5 rounded font-bold transition"
                                                         >
-                                                            Invia Card WA
+                                                            Invia WA
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => copyClientLink(client)}
+                                                            className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 px-2.5 py-1.5 rounded font-semibold transition"
+                                                            title="Copia link card"
+                                                        >
+                                                            Copia Link
                                                         </button>
                                                         <button 
                                                             onClick={() => deleteClient(client.id)}
@@ -491,7 +527,23 @@
                                                         </div>
                                                         <div className="flex gap-2">
                                                             <button onClick={() => updateSubStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded text-sm font-bold border border-zinc-700">-</button>
-                                                            <button onClick={() => updateSubStamps(client.id, 1)} className="flex-1 bg-zinc-200 hover:bg-white text-black py-1.5 rounded text-sm font-bold">+ Servizio Abbonamento</button>
+                                                            <button onClick={() => updateSubStamps(client.id, 1)} className="flex-1 bg-zinc-200 hover:bg-white text-black py-1.5 rounded text-sm font-bold">+ Servizio</button>
+                                                        </div>
+                                                        <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between">
+                                                            <span className="text-[11px] text-zinc-400">Cambia tipo:</span>
+                                                            <div className="flex gap-1">
+                                                                {['Bronze', 'Silver', 'Gold'].map(tier => (
+                                                                    <button 
+                                                                        key={tier}
+                                                                        onClick={() => changeSubTier(client.id, tier)}
+                                                                        className={`text-[10px] px-2 py-1 rounded font-bold border transition ${
+                                                                            client.sub.type === tier ? 'bg-white text-black border-white' : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                                        }`}
+                                                                    >
+                                                                        {tier}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                         <button onClick={() => removeSub(client.id)} className="w-full bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white py-1.5 rounded text-xs transition">
                                                             Termina e Rimuovi Abbonamento
