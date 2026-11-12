@@ -9,12 +9,12 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        @keyframes glow {
-            0%, 100% { text-shadow: 0 0 15px rgba(245, 158, 11, 0.3), 0 0 30px rgba(245, 158, 11, 0.1); }
-            50% { text-shadow: 0 0 25px rgba(245, 158, 11, 0.6), 0 0 50px rgba(245, 158, 11, 0.3); }
+        @keyframes whiteGlow {
+            0%, 100% { text-shadow: 0 0 12px rgba(255, 255, 255, 0.25), 0 0 24px rgba(255, 255, 255, 0.08); }
+            50% { text-shadow: 0 0 22px rgba(255, 255, 255, 0.55), 0 0 40px rgba(255, 255, 255, 0.2); }
         }
-        .neon-title {
-            animation: glow 3s ease-in-out infinite;
+        .logo-glow {
+            animation: whiteGlow 3.5s ease-in-out infinite;
         }
     </style>
 </head>
@@ -52,7 +52,7 @@
                 }
                 return [
                     { id: 1, name: "Marco Rossi", phone: "3331234567", stamps: 3, sub: null, lastVisit: "2026-11-01" },
-                    { id: 2, name: "Luca Bianchi", phone: "3389876543", stamps: 0, sub: { type: "Silver", serviceName: "Barba & Taglio", used: 2 }, lastVisit: "2026-10-25" },
+                    { id: 2, name: "Luca Bianchi", phone: "3389876543", stamps: 0, sub: { type: "Silver", used: 2 }, lastVisit: "2026-10-25" },
                 ];
             });
 
@@ -115,10 +115,10 @@
                 }));
             };
 
-            const assignSub = (clientId, type, serviceName) => {
+            const assignSub = (clientId, type) => {
                 setClients(clients.map(c => {
                     if (c.id === clientId) {
-                        return { ...c, sub: { type, serviceName, used: 0, startDate: new Date().toISOString().split('T')[0] }, lastVisit: new Date().toISOString().split('T')[0] };
+                        return { ...c, sub: { type, used: 0, startDate: new Date().toISOString().split('T')[0] }, lastVisit: new Date().toISOString().split('T')[0] };
                     }
                     return c;
                 }));
@@ -175,7 +175,6 @@
                     s: client.stamps,
                     sub: client.sub ? {
                         t: client.sub.type,
-                        srv: client.sub.serviceName,
                         u: client.sub.used,
                         m: client.sub.type === 'Bronze' ? 2 : client.sub.type === 'Silver' ? 4 : 10
                     } : null,
@@ -207,24 +206,52 @@
             if (sharedCard) {
                 const isSub = sharedCard.sub !== null;
                 const subType = isSub ? sharedCard.sub.t : '';
-                
-                // Colori dinamici in base al tipo di card
-                const accentColor = isSub 
-                    ? (subType === 'Bronze' ? 'amber-600' : subType === 'Silver' ? 'slate-300' : 'yellow-400')
-                    : 'amber-500';
+
+                // Temi cromatici specifici per Bronze, Silver e Gold
+                const subThemes = {
+                    Bronze: {
+                        cardBg: 'from-[#23150e] via-zinc-950 to-black',
+                        border: 'border-amber-700/60',
+                        label: 'text-amber-600',
+                        badgeBg: 'bg-amber-900/30 border-amber-700/50 text-amber-500',
+                        slotActive: 'border-amber-600 bg-gradient-to-br from-amber-600 to-amber-800 text-white shadow-[0_0_12px_rgba(217,119,6,0.45)]',
+                        slotInactive: 'border-amber-900/40 bg-black/60 text-amber-800',
+                        counterText: 'text-amber-500'
+                    },
+                    Silver: {
+                        cardBg: 'from-[#1e2229] via-zinc-950 to-black',
+                        border: 'border-slate-400/60',
+                        label: 'text-slate-300',
+                        badgeBg: 'bg-slate-800/60 border-slate-400/50 text-slate-200',
+                        slotActive: 'border-slate-300 bg-gradient-to-br from-slate-200 to-slate-400 text-black shadow-[0_0_12px_rgba(203,213,225,0.45)]',
+                        slotInactive: 'border-slate-700/50 bg-black/60 text-slate-600',
+                        counterText: 'text-slate-200'
+                    },
+                    Gold: {
+                        cardBg: 'from-[#261f0a] via-zinc-950 to-black',
+                        border: 'border-yellow-500/60',
+                        label: 'text-yellow-400',
+                        badgeBg: 'bg-yellow-900/30 border-yellow-500/50 text-yellow-400',
+                        slotActive: 'border-yellow-400 bg-gradient-to-br from-yellow-400 to-amber-500 text-black shadow-[0_0_14px_rgba(250,204,21,0.5)]',
+                        slotInactive: 'border-yellow-900/40 bg-black/60 text-yellow-700',
+                        counterText: 'text-yellow-400'
+                    }
+                };
+
+                const theme = isSub ? (subThemes[subType] || subThemes.Gold) : null;
 
                 return (
                     <div className="max-w-md mx-auto p-4 pb-8 flex flex-col min-h-screen justify-between">
                         <div>
                             <header className="text-center py-6 border-b border-zinc-800 mb-6">
-                                <h1 className="text-2xl font-bold tracking-widest uppercase text-amber-500 neon-title">Barberia Romana</h1>
-                                <p className="text-xs text-zinc-400 mt-1">{isSub ? `Abbonamento ${subType} Ufficiale` : 'Tessera Fedeltà Digitale'}</p>
+                                <h1 className="text-2xl font-bold tracking-[0.2em] uppercase text-white logo-glow">Barberia Romana</h1>
+                                <p className="text-xs text-zinc-400 mt-1">{isSub ? `Abbonamento ${subType}` : 'Tessera Fedeltà Digitale'}</p>
                             </header>
 
-                            <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-amber-500/40 rounded-2xl p-6 shadow-2xl space-y-6 relative overflow-hidden">
-                                <div className="flex justify-between items-start border-b border-zinc-800 pb-4">
+                            <div className={`bg-gradient-to-b ${isSub ? theme.cardBg : 'from-zinc-900 to-zinc-950'} border ${isSub ? theme.border : 'border-amber-500/40'} rounded-2xl p-6 shadow-2xl space-y-6 relative overflow-hidden`}>
+                                <div className="flex justify-between items-start border-b border-zinc-800/80 pb-4">
                                     <div>
-                                        <span className="text-[10px] uppercase tracking-widest text-amber-500 font-bold block mb-1">Titolare Card</span>
+                                        <span className={`text-[10px] uppercase tracking-widest font-bold block mb-1 ${isSub ? theme.label : 'text-amber-500'}`}>Titolare Card</span>
                                         <h2 className="text-xl font-bold text-white">{sharedCard.n}</h2>
                                     </div>
                                     <div className="bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
@@ -234,16 +261,14 @@
                                 </div>
 
                                 {isSub ? (
-                                    /* GRAFICA DEDICATA ABBONAMENTO CON BOX DA TIMBRARE */
+                                    /* GRAFICA COLORATA DEDICATA ABBONAMENTO */
                                     <div className="text-center py-2 space-y-4">
-                                        <div className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-xl">
-                                            <span className="text-xs text-zinc-400 block">Tipologia Servizio</span>
-                                            <span className="text-sm font-bold text-amber-400">{sharedCard.sub.srv} ({sharedCard.sub.t} Card)</span>
+                                        <div className={`inline-block border px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${theme.badgeBg}`}>
+                                            Abbonamento {subType}
                                         </div>
 
                                         <p className="text-xs text-zinc-400">Servizi utilizzati: <strong className="text-white">{sharedCard.sub.u}</strong> su <strong className="text-white">{sharedCard.sub.m}</strong></p>
 
-                                        {/* Griglia box abbonamento */}
                                         <div className="grid grid-cols-5 gap-2 my-4">
                                             {Array.from({ length: sharedCard.sub.m }, (_, index) => {
                                                 const slotNumber = index + 1;
@@ -252,9 +277,7 @@
                                                     <div 
                                                         key={index} 
                                                         className={`h-12 rounded-xl border-2 flex flex-col items-center justify-center font-bold text-xs transition-all ${
-                                                            isUsed 
-                                                                ? 'border-amber-500 bg-amber-500 text-black shadow-[0_0_10px_rgba(245,158,11,0.3)]' 
-                                                                : 'border-zinc-700 bg-black/40 text-zinc-500'
+                                                            isUsed ? theme.slotActive : theme.slotInactive
                                                         }`}
                                                     >
                                                         {isUsed ? '✓' : slotNumber}
@@ -263,12 +286,12 @@
                                             })}
                                         </div>
 
-                                        <div className="inline-block bg-zinc-900 border border-zinc-800 px-4 py-1.5 rounded-full">
-                                            <span className="text-xs text-zinc-300">Servizi rimanenti: <strong className="text-emerald-400">{sharedCard.sub.m - sharedCard.sub.u}</strong></span>
+                                        <div className="inline-block bg-black/70 border border-zinc-800 px-4 py-1.5 rounded-full">
+                                            <span className="text-xs text-zinc-300">Servizi rimanenti: <strong className={theme.counterText}>{sharedCard.sub.m - sharedCard.sub.u}</strong></span>
                                         </div>
                                     </div>
                                 ) : (
-                                    /* GRAFICA TESSERA FEDELTÀ STANDARD 5 TIMBRI */
+                                    /* GRAFICA TESSERA FEDELTÀ STANDARD (INVARIATA) */
                                     <div className="text-center py-2">
                                         <p className="text-xs text-zinc-400 mb-4">Colleziona 5 timbri: il 5° servizio è al <strong className="text-white">50% di sconto</strong></p>
                                         
@@ -331,25 +354,25 @@
             }
 
             // =====================================================================
-            // VISTA 2: HOME STAFF SPETTACOLARE & GESTIONALE
+            // VISTA 2: HOME STAFF (NERO, GRIGIO E BIANCO)
             // =====================================================================
             return (
                 <div className="max-w-md mx-auto p-4 pb-8 flex flex-col min-h-screen justify-between">
                     <div className="flex-1 flex flex-col">
-                        <header className="text-center py-8 border-b border-zinc-800/80 mb-6 bg-gradient-to-b from-zinc-950 to-black rounded-2xl shadow-inner">
-                            <h1 className="text-3xl font-extrabold tracking-widest uppercase text-amber-500 neon-title">Barberia Romana</h1>
-                            <p className="text-xs text-zinc-400 tracking-widest mt-2 uppercase">Official Staff Management</p>
+                        <header className="text-center py-8 border-b border-zinc-800 mb-6 bg-gradient-to-b from-zinc-900/60 to-black rounded-2xl">
+                            <h1 className="text-3xl font-extrabold tracking-[0.22em] uppercase text-white logo-glow">Barberia Romana</h1>
+                            <p className="text-[11px] text-zinc-400 tracking-[0.25em] mt-2 uppercase">Staff Management</p>
                         </header>
 
                         {!isAuthorized ? (
                             <div className="my-auto py-8">
-                                <div className="bg-zinc-900/90 border border-amber-500/30 p-8 rounded-3xl text-center space-y-6 shadow-2xl backdrop-blur-sm">
+                                <div className="bg-zinc-900/90 border border-zinc-700/80 p-8 rounded-3xl text-center space-y-6 shadow-2xl">
                                     <div className="space-y-1">
-                                        <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-2xl mx-auto flex items-center justify-center text-amber-500 text-xl font-bold mb-3 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-                                            🔒
+                                        <div className="w-12 h-12 bg-zinc-800 border border-zinc-700 rounded-2xl mx-auto flex items-center justify-center text-white text-lg font-bold mb-3">
+                                            PIN
                                         </div>
                                         <h2 className="text-lg font-bold tracking-wide uppercase text-white">Area Riservata</h2>
-                                        <p className="text-xs text-zinc-400">Inserisci il PIN di sicurezza per sbloccare il sistema</p>
+                                        <p className="text-xs text-zinc-400">Inserisci il codice di sicurezza per accedere</p>
                                     </div>
                                     <form onSubmit={handleLogin} className="space-y-4">
                                         <input 
@@ -358,11 +381,11 @@
                                             placeholder="••••" 
                                             value={pinInput}
                                             onChange={(e) => setPinInput(e.target.value)}
-                                            className="w-full bg-black border border-zinc-700 rounded-xl p-4 text-center text-3xl tracking-[0.6em] text-amber-400 focus:outline-none focus:border-amber-500 transition shadow-inner"
+                                            className="w-full bg-black border border-zinc-700 rounded-xl p-4 text-center text-3xl tracking-[0.6em] text-white focus:outline-none focus:border-white transition"
                                             maxLength="4"
                                             autoFocus
                                         />
-                                        <button type="submit" className="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-bold py-3.5 rounded-xl transition tracking-wide shadow-lg">
+                                        <button type="submit" className="w-full bg-white hover:bg-zinc-200 text-black font-bold py-3.5 rounded-xl transition tracking-wide shadow-lg">
                                             Sblocca Pannello
                                         </button>
                                     </form>
@@ -372,48 +395,48 @@
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800">
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                        <span className="text-sm font-semibold text-emerald-400">Staff Connesso</span>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
+                                        <span className="text-sm font-semibold text-white">Staff Connesso</span>
                                     </div>
-                                    <button onClick={() => setIsAuthorized(false)} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition font-medium">
+                                    <button onClick={() => setIsAuthorized(false)} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg transition font-medium border border-zinc-700">
                                         Blocca
                                     </button>
                                 </div>
 
                                 <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex items-center justify-between gap-2">
-                                    <span className="text-xs text-zinc-400 font-medium pl-1">Salvataggio Dati:</span>
+                                    <span className="text-xs text-zinc-400 font-medium pl-1">Backup Dati:</span>
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={exportBackup} 
-                                            className="text-xs bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-lg transition font-semibold"
+                                            className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 px-3 py-1.5 rounded-lg transition font-semibold"
                                         >
-                                            💾 Esporta Backup
+                                            Esporta
                                         </button>
-                                        <label className="text-xs bg-zinc-800 hover:bg-zinc-700 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-lg transition font-semibold cursor-pointer">
-                                            📂 Importa
+                                        <label className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 px-3 py-1.5 rounded-lg transition font-semibold cursor-pointer">
+                                            Importa
                                             <input type="file" accept=".json" onChange={importBackup} className="hidden" />
                                         </label>
                                     </div>
                                 </div>
 
-                                <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3 shadow-lg">
-                                    <h3 className="font-semibold text-sm text-amber-500">Registra Nuovo Cliente</h3>
+                                <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-3">
+                                    <h3 className="font-semibold text-sm text-white uppercase tracking-wider">Registra Nuovo Cliente</h3>
                                     <form onSubmit={handleAddClient} className="space-y-2">
                                         <input 
                                             type="text" 
                                             placeholder="Nome e Cognome" 
                                             value={newClientName}
                                             onChange={(e) => setNewClientName(e.target.value)}
-                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-white"
                                         />
                                         <input 
                                             type="tel" 
                                             placeholder="Numero di Telefono (es. 3331234567)" 
                                             value={newClientPhone}
                                             onChange={(e) => setNewClientPhone(e.target.value)}
-                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-white"
                                         />
-                                        <button type="submit" className="w-full bg-white text-black font-semibold py-2.5 rounded-lg hover:bg-zinc-200 text-sm transition shadow">
+                                        <button type="submit" className="w-full bg-white text-black font-bold py-2.5 rounded-lg hover:bg-zinc-200 text-sm transition">
                                             + Aggiungi Cliente
                                         </button>
                                     </form>
@@ -425,7 +448,7 @@
                                         placeholder="Cerca cliente per nome o telefono..." 
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-amber-500"
+                                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-white"
                                     />
                                 </div>
 
@@ -433,7 +456,7 @@
                                     {clients
                                         .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery))
                                         .map(client => (
-                                            <div key={client.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-4 shadow">
+                                            <div key={client.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl space-y-4">
                                                 <div className="flex justify-between items-start gap-2">
                                                     <div>
                                                         <h3 className="font-bold text-base text-white">{client.name}</h3>
@@ -442,49 +465,53 @@
                                                     <div className="flex gap-1.5">
                                                         <button 
                                                             onClick={() => sendClientCardWhatsApp(client)}
-                                                            className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded font-semibold transition shadow"
+                                                            className="text-xs bg-white hover:bg-zinc-200 text-black px-2.5 py-1.5 rounded font-bold transition"
                                                         >
                                                             Invia Card WA
                                                         </button>
                                                         <button 
                                                             onClick={() => deleteClient(client.id)}
-                                                            className="text-xs bg-red-900/20 text-red-400 border border-red-800/40 px-2 py-1.5 rounded hover:bg-red-900/40 transition"
+                                                            className="text-xs bg-zinc-800 text-zinc-400 border border-zinc-700 px-2 py-1.5 rounded hover:text-white transition"
                                                         >
                                                             Elimina
                                                         </button>
                                                     </div>
                                                 </div>
 
-                                                {/* Se ha un abbonamento attivo mostra la gestione abbonamento, altrimenti la tessera timbri */}
                                                 {client.sub ? (
                                                     <div className="border-t border-zinc-800 pt-3 space-y-3">
                                                         <div className="flex justify-between items-center text-xs">
-                                                            <span className="font-bold text-amber-500">Abbonamento {client.sub.type} ({client.sub.serviceName})</span>
+                                                            <span className={`font-bold ${
+                                                                client.sub.type === 'Bronze' ? 'text-amber-500' : 
+                                                                client.sub.type === 'Silver' ? 'text-slate-300' : 'text-yellow-400'
+                                                            }`}>
+                                                                Abbonamento {client.sub.type}
+                                                            </span>
                                                             <span className="text-zinc-400">Usati: <strong className="text-white">{client.sub.used}</strong> / {client.sub.type === 'Bronze' ? 2 : client.sub.type === 'Silver' ? 4 : 10}</span>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <button onClick={() => updateSubStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
-                                                            <button onClick={() => updateSubStamps(client.id, 1)} className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-1.5 rounded text-sm font-semibold">+ Servizio Abbonamento</button>
+                                                            <button onClick={() => updateSubStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded text-sm font-bold border border-zinc-700">-</button>
+                                                            <button onClick={() => updateSubStamps(client.id, 1)} className="flex-1 bg-zinc-200 hover:bg-white text-black py-1.5 rounded text-sm font-bold">+ Servizio Abbonamento</button>
                                                         </div>
-                                                        <button onClick={() => removeSub(client.id)} className="w-full bg-red-900/30 text-red-400 border border-red-800/50 hover:bg-red-900/50 py-1.5 rounded text-xs transition">
+                                                        <button onClick={() => removeSub(client.id)} className="w-full bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white py-1.5 rounded text-xs transition">
                                                             Termina e Rimuovi Abbonamento
                                                         </button>
                                                     </div>
                                                 ) : (
                                                     <div className="border-t border-zinc-800 pt-3 space-y-3">
                                                         <div className="flex justify-between items-center text-xs mb-1">
-                                                            <span className="text-zinc-400">Tessera Fedeltà (Timbri: <strong className="text-amber-500">{client.stamps}/5</strong>)</span>
+                                                            <span className="text-zinc-400">Tessera Fedeltà (Timbri: <strong className="text-white">{client.stamps}/5</strong>)</span>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <button onClick={() => updateStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm font-bold">-</button>
-                                                            <button onClick={() => updateStamps(client.id, 1)} className="flex-1 bg-white text-black hover:bg-zinc-200 py-1.5 rounded text-sm font-semibold">+ Aggiungi Timbro</button>
+                                                            <button onClick={() => updateStamps(client.id, -1)} className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded text-sm font-bold border border-zinc-700">-</button>
+                                                            <button onClick={() => updateStamps(client.id, 1)} className="flex-1 bg-white text-black hover:bg-zinc-200 py-1.5 rounded text-sm font-bold">+ Aggiungi Timbro</button>
                                                         </div>
-                                                        <div className="pt-2 border-t border-zinc-800/60">
+                                                        <div className="pt-2 border-t border-zinc-800">
                                                             <p className="text-[11px] text-zinc-400 mb-1.5">Oppure converti in abbonamento:</p>
                                                             <div className="grid grid-cols-3 gap-2">
-                                                                <button onClick={() => assignSub(client.id, 'Bronze', 'Taglio')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium text-amber-600">Bronze</button>
-                                                                <button onClick={() => assignSub(client.id, 'Silver', 'Barba')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium text-slate-300">Silver</button>
-                                                                <button onClick={() => assignSub(client.id, 'Gold', 'Completo')} className="bg-zinc-800 hover:bg-zinc-700 text-xs py-1.5 rounded font-medium text-yellow-400">Gold</button>
+                                                                <button onClick={() => assignSub(client.id, 'Bronze')} className="bg-zinc-800 hover:bg-zinc-700 border border-amber-700/40 text-xs py-1.5 rounded font-semibold text-amber-500">Bronze</button>
+                                                                <button onClick={() => assignSub(client.id, 'Silver')} className="bg-zinc-800 hover:bg-zinc-700 border border-slate-500/40 text-xs py-1.5 rounded font-semibold text-slate-300">Silver</button>
+                                                                <button onClick={() => assignSub(client.id, 'Gold')} className="bg-zinc-800 hover:bg-zinc-700 border border-yellow-500/40 text-xs py-1.5 rounded font-semibold text-yellow-400">Gold</button>
                                                             </div>
                                                         </div>
                                                     </div>
